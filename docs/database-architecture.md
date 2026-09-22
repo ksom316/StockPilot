@@ -160,6 +160,8 @@ Estimated Days of Stock is available only with Sales enabled, 30 complete observ
 
 Phase 9A deliberately does not classify products as Fast/Normal/Slow, identify possible excess stock, recommend order quantities, perform supplier analysis, value inventory, or use predictions, AI, OpenRouter, the AI Analyst, or the Business Opportunity Advisor. Purchasing is not required and contributes no receipt/cost data to this initial contract. The existing bounded Sales, sale-item, product, and movement indexes support the snapshot query; new indexes should be added only if measured production-like query plans demonstrate a need.
 
+Two Phase 9 limitations remain intentional: a Sales transition timestamp can theoretically precede transaction visibility when a transition executes before business-local midnight but commits afterward; and the UI currently does not surface the backend's `RECORDED_INVENTORY_MOVEMENTS_OBSERVED` explanation, although its factual movement fields remain available in the RPC response. These are deferred to later production hardening and polish, respectively.
+
 ## Deliberately deferred
 
 - Invitation and ownership-transfer workflows
