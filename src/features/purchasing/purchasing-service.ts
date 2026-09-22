@@ -33,18 +33,33 @@ export async function fetchManagedSuppliers(businessId: string): Promise<Managed
 }
 
 export async function createSupplier(businessId: string, input: SupplierInput) {
-  const { error } = await requireClient().from("suppliers").insert({ business_id: businessId, ...input })
+  const { error } = await requireClient().from("suppliers").insert({
+    business_id: businessId,
+    name: input.name,
+    contact_name: input.contact_name,
+    phone: input.phone,
+    email: input.email,
+    notes: input.notes,
+  })
   if (error) throw new PurchasingDataError("We couldn't save this supplier. Check the details and try again.", error.code)
 }
 
 export async function updateSupplier(businessId: string, supplierId: string, input: SupplierInput) {
-  const { error } = await requireClient().from("suppliers").update(input).eq("business_id", businessId).eq("id", supplierId)
+  const { data, error } = await requireClient().from("suppliers").update({
+    name: input.name,
+    contact_name: input.contact_name,
+    phone: input.phone,
+    email: input.email,
+    notes: input.notes,
+  }).eq("business_id", businessId).eq("id", supplierId).select("id").maybeSingle()
   if (error) throw new PurchasingDataError("We couldn't update this supplier. Please try again.", error.code)
+  if (!data) throw new PurchasingDataError("This supplier is unavailable or you no longer have permission to update it.", "SUPPLIER_UNAVAILABLE")
 }
 
 export async function setSupplierActive(businessId: string, supplierId: string, isActive: boolean) {
-  const { error } = await requireClient().from("suppliers").update({ is_active: isActive }).eq("business_id", businessId).eq("id", supplierId)
+  const { data, error } = await requireClient().from("suppliers").update({ is_active: isActive }).eq("business_id", businessId).eq("id", supplierId).select("id").maybeSingle()
   if (error) throw new PurchasingDataError("We couldn't update this supplier. Please try again.", error.code)
+  if (!data) throw new PurchasingDataError("This supplier is unavailable or you no longer have permission to update it.", "SUPPLIER_UNAVAILABLE")
 }
 
 export async function fetchPurchases(businessId: string): Promise<PurchaseSummary[]> {
