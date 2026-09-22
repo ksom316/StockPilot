@@ -43,9 +43,10 @@ The project-scoped Supabase CLI configuration lives in `supabase/`. Docker is re
 npx supabase start
 npx supabase db reset
 npx supabase db lint --level warning
+npx supabase test db
 ```
 
-See [`docs/database-architecture.md`](docs/database-architecture.md) for the tenancy, module, inventory transaction, and RLS design.
+See [`docs/database-architecture.md`](docs/database-architecture.md) for the tenancy, role permissions, module strategy, inventory transaction boundary, grants, and RLS design.
 
 ## Source layout
 

@@ -36,14 +36,38 @@ Manual inventory uses `source_type = 'manual'` and does not depend on any option
 
 ## Security boundary
 
-RLS is enabled on every public application table. This phase deliberately creates no permissive policies and revokes table privileges from `anon` and `authenticated`, so browser access fails closed. The inventory function is `SECURITY INVOKER`; it cannot bypass RLS. The next security phase must add reviewed per-operation grants and policies based on active `business_members` rows before the frontend uses these tables.
+RLS is enabled on every public application table. Policies derive tenant access from the caller's active `business_members` row. Three minimal helpers in the unexposed `private` schema read membership and ownership facts without triggering recursive membership policies. They are `SECURITY DEFINER`, use an empty search path, schema-qualify every relation, and return information only about `auth.uid()`.
+
+The role permissions are:
+
+| Resource | Owner | Manager | Employee | Cashier |
+| --- | --- | --- | --- | --- |
+| Business | Read and edit settings | Read | Read | Read |
+| Memberships | Read and manage non-owner members | Read | Read | Read |
+| Optional modules | Read and toggle | Read | Read | Read |
+| Categories | Read and manage | Read and manage | Read and manage | Read |
+| Products | Read and manage | Read and manage | Read and manage | Read |
+| Inventory history | Read and create through RPC | Read and create through RPC | Read and create through RPC | Read |
+
+Profiles are private to their user. Authenticated users can select their own profile and update only `display_name`; Auth credentials remain in `auth.users` and are never exposed through `profiles`.
+
+Grants and policies are both required. The `anon` role has no application table or function privileges. The `authenticated` role receives table `SELECT` only where needed and column-level mutation grants. Immutable identifiers, tenant keys, timestamps, ownership, and stock balances are excluded from client update grants.
 
 Private trigger functions use a locked search path and are not executable by browser roles. The profile trigger is the only Auth integration: it creates a profile when Supabase Auth creates a user.
 
+### Inventory mutation security
+
+Authenticated clients have no `INSERT`, `UPDATE`, or `DELETE` grants on `inventory_movements`. They also lack `INSERT` and `UPDATE` privileges for `products.current_quantity`. This prevents a client from changing a balance without its audit record.
+
+`record_inventory_movement` is the narrow write boundary. It must be `SECURITY DEFINER` so it can write those protected fields, and therefore performs explicit authorization before mutation: it derives the actor from `auth.uid()`, requires an active owner, manager, or employee membership for the product's business, and restricts authenticated calls to `manual` source records with no source reference. Cashiers and cross-tenant callers are rejected. Trusted service-role calls may later use `system`, `sales`, or `purchasing` sources. The function keeps a locked search path, locks the product row, rejects negative stock, updates the balance, and inserts history in one transaction.
+
+The pgTAP suite in `supabase/tests/` exercises cross-tenant reads and writes, owner and employee management, cashier restrictions, privilege boundaries, role escalation, module changes, inventory authorization, negative-stock rejection, source forgery, and authenticated actor recording. Run it against a reset local Supabase stack with `npx supabase test db`.
+
 ## Deliberately deferred
 
-- Production RLS policies and policy tests
 - Invitation and ownership-transfer workflows
 - Sales, purchasing, customer, supplier, expense, AI, forecast, notification, and analytics tables
 - Seed or demo data
 - UI and generated TypeScript database types
+- Finer role capabilities and cashier inventory permissions
+- Backend integration for trusted Sales and Purchasing movement sources
