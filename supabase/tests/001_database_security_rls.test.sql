@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(30);
+select plan(31);
 
 insert into auth.users (
   id,
@@ -202,12 +202,23 @@ update public.products
 set name = 'Cross-tenant overwrite'
 where id = '30000000-0000-0000-0000-000000000002';
 
+update public.business_modules
+set enabled = true
+where business_id = '10000000-0000-0000-0000-000000000002'
+  and module = 'sales';
+
 reset role;
 
 select is(
   (select name from public.products where id = '30000000-0000-0000-0000-000000000002'),
   'Product B',
   'user A cannot modify user B products'
+);
+
+select is(
+  (select enabled from public.business_modules where business_id = '10000000-0000-0000-0000-000000000002' and module = 'sales'),
+  false,
+  'a member cannot modify another business module configuration'
 );
 
 set local role authenticated;

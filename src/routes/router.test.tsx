@@ -48,6 +48,14 @@ describe("authentication routes", () => {
     expect(await screen.findByRole("heading", { name: /movement history/i })).toBeInTheDocument()
   })
 
+  it("requires authentication for module settings and gives cashiers read-only access", async () => {
+    renderRoute("/settings/modules")
+    expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
+    renderRoute("/settings/modules", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role: "cashier" }, role: "cashier", onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: "Modules" })).toBeInTheDocument()
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument()
+  })
+
   it("redirects a signed-out onboarding visit to sign in", async () => {
     renderRoute("/onboarding")
     expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()

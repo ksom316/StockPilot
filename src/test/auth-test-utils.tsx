@@ -63,6 +63,7 @@ export function createBusinessValue(overrides: Partial<BusinessContextValue> = {
     error: null,
     refresh: vi.fn(),
     completeOnboarding: vi.fn(),
+    setModuleEnabled: vi.fn(),
     ...overrides,
   }
 }

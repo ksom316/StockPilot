@@ -1,4 +1,4 @@
-import { Boxes, LogOut } from "lucide-react"
+import { Boxes, LogOut, Settings2 } from "lucide-react"
 import { useState } from "react"
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 
@@ -50,6 +50,7 @@ export function AppShell() {
             {session ? (
               <>
                 {business && <span className="hidden max-w-48 truncate text-muted-foreground md:inline" title={business.name}>{business.name}</span>}
+                {business && <NavLink className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" to="/settings/modules"><Settings2 aria-hidden="true" className="size-4" /><span>Modules</span></NavLink>}
                 <Button disabled={isSigningOut} onClick={handleSignOut} size="sm" variant="outline">
                   <LogOut aria-hidden="true" className="size-4" />
                   <span className="ml-2">{isSigningOut ? "Signing out…" : "Sign out"}</span>

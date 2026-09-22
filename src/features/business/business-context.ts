@@ -32,6 +32,7 @@ export interface BusinessContextValue {
   error: string | null
   refresh: () => Promise<void>
   completeOnboarding: (input: CompleteOnboardingInput) => Promise<void>
+  setModuleEnabled: (module: OptionalModule, enabled: boolean) => Promise<void>
 }
 
 export const BusinessContext = createContext<BusinessContextValue | undefined>(undefined)

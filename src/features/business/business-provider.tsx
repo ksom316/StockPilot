@@ -130,8 +130,25 @@ export function BusinessProvider({ children }: PropsWithChildren) {
     await resolveBusiness()
   }, [resolveBusiness, user])
 
-  const isLoading = isAuthLoading || Boolean(user && state.resolvedUserId !== user.id)
   const resolvedState = user && state.resolvedUserId === user.id ? state : emptyState
+  const setModuleEnabled = useCallback(async (module: OptionalModule, enabled: boolean) => {
+    const currentBusiness = resolvedState.business
+    if (!user || !supabase || !currentBusiness) throw new Error("Your workspace is unavailable. Refresh and try again.")
+    if (resolvedState.membership?.role !== "owner") throw new Error("Only the business owner can change modules.")
+
+    const { data, error } = await supabase
+      .from("business_modules")
+      .update({ enabled })
+      .eq("business_id", currentBusiness.id)
+      .eq("module", module)
+      .select("module, enabled")
+      .maybeSingle()
+
+    if (error || !data) throw new Error("We couldn't update this module. Confirm your owner access and try again.")
+    await resolveBusiness()
+  }, [resolveBusiness, resolvedState, user])
+
+  const isLoading = isAuthLoading || Boolean(user && state.resolvedUserId !== user.id)
   const value = useMemo<BusinessContextValue>(() => ({
     business: resolvedState.business,
     membership: resolvedState.membership,
@@ -142,7 +159,8 @@ export function BusinessProvider({ children }: PropsWithChildren) {
     error: resolvedState.error,
     refresh: resolveBusiness,
     completeOnboarding,
-  }), [completeOnboarding, isLoading, resolveBusiness, resolvedState, user])
+    setModuleEnabled,
+  }), [completeOnboarding, isLoading, resolveBusiness, resolvedState, setModuleEnabled, user])
 
   return <BusinessContext.Provider value={value}>{children}</BusinessContext.Provider>
 }

@@ -7,6 +7,7 @@ import { HomePage } from "@/pages/home-page"
 import { InventoryPage } from "@/pages/inventory-page"
 import { InventoryMovementsPage } from "@/pages/inventory-movements-page"
 import { LoginPage } from "@/pages/login-page"
+import { ModuleSettingsPage } from "@/pages/module-settings-page"
 import { NotFoundPage } from "@/pages/not-found-page"
 import { OnboardingPage } from "@/pages/onboarding-page"
 import { SignupPage } from "@/pages/signup-page"
@@ -36,6 +37,7 @@ export const routes = [
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/inventory", element: <InventoryPage /> },
               { path: "/inventory/movements", element: <InventoryMovementsPage /> },
+              { path: "/settings/modules", element: <ModuleSettingsPage /> },
             ],
           },
         ],
