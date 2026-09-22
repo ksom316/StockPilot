@@ -381,6 +381,11 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+[functions.ai-analyst]
+# Authentication is validated inside the function with Auth getUser(); the
+# deterministic business-context RPC keeps the caller Authorization header.
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
