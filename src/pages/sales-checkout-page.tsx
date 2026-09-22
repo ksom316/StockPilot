@@ -1,6 +1,8 @@
 import { PackagePlus, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { useMemo, useRef, useState, type FormEvent } from "react"
+import { Link } from "react-router-dom"
 
+import { SalesSectionNav } from "@/components/sales/sales-section-nav"
 import { Button } from "@/components/ui/button"
 import { useBusiness } from "@/features/business/business-context"
 import { formatQuantity } from "@/features/inventory/inventory-format"
@@ -63,12 +65,18 @@ export function SalesCheckoutPage() {
     if (!selectedProduct) nextErrors.product = "Choose an active product."
     const parsedQuantity = parseQuantity(quantity)
     if (!parsedQuantity) nextErrors.quantity = "Enter a quantity greater than zero with up to 3 decimal places."
-    if (!parseSalePrice(unitPrice)) nextErrors.price = "Enter a price of zero or more with up to 4 decimal places."
+    const parsedPrice = parseSalePrice(unitPrice)
+    if (!parsedPrice) nextErrors.price = "Enter a price of zero or more with up to 4 decimal places."
     if (selectedProduct && parsedQuantity && parsedQuantity.scaled > parseDatabaseQuantity(selectedProduct.currentQuantity).scaled) {
       nextErrors.quantity = `Quantity exceeds the available stock (${formatQuantity(selectedProduct.currentQuantity)}).`
     }
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0 || !selectedProduct || !parsedQuantity) return
+    if (Object.keys(nextErrors).length > 0 || !selectedProduct || !parsedQuantity || !parsedPrice) return
+
+    if (calculateSaleLineTotal(parsedQuantity.value, parsedPrice.value) === null) {
+      setErrors({ ...nextErrors, price: "This quantity and price exceed the maximum supported line total." })
+      return
+    }
 
     const existing = cart.find((line) => line.productId === selectedProduct.id)
     const line: CartLine = {
@@ -76,7 +84,14 @@ export function SalesCheckoutPage() {
       name: selectedProduct.name,
       sku: selectedProduct.sku,
       quantity: parsedQuantity.value,
-      unitPrice: parseSalePrice(unitPrice)!.value,
+      unitPrice: parsedPrice.value,
+    }
+    const nextCart = existing
+      ? cart.map((item) => item.productId === line.productId ? line : item)
+      : [...cart, line]
+    if (calculateSaleTotal(nextCart) === null) {
+      setFormError("Adding this item would exceed the maximum supported sale total. Adjust quantities or prices and try again.")
+      return
     }
     setCart((current) => existing
       ? current.map((item) => item.productId === line.productId ? line : item)
@@ -97,6 +112,7 @@ export function SalesCheckoutPage() {
 
   const removeLine = (productId: string) => {
     setCart((current) => current.filter((line) => line.productId !== productId))
+    setFormError("")
     if (selectedProductId === productId) setSelectedProductId("")
   }
 
@@ -104,6 +120,10 @@ export function SalesCheckoutPage() {
     if (recordSale.isPending || submissionLock.current) return
     if (!cart.length) {
       setFormError("Add at least one item to the sale.")
+      return
+    }
+    if (total === null) {
+      setFormError("This sale exceeds the maximum supported total. Adjust quantities or prices and try again.")
       return
     }
     if (!business) {
@@ -147,13 +167,14 @@ export function SalesCheckoutPage() {
 
   return (
     <section className="space-y-6">
+      <SalesSectionNav />
       <header>
         <p className="text-sm font-medium text-primary">Sales</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">New sale</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">Choose products, review the transaction prices, and record the sale. Stock updates when the sale is saved.</p>
       </header>
 
-      {success && <div aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 p-4" role="status"><p className="font-semibold">Sale recorded</p><p className="mt-1 text-sm">Reference: <span className="font-medium">{success.sale_reference}</span></p></div>}
+      {success && <div aria-live="polite" className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/25 bg-primary/5 p-4" role="status"><div><p className="font-semibold">Sale recorded</p><p className="mt-1 text-sm">Reference: <span className="font-medium">{success.sale_reference}</span></p></div><div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link to={`/sales/${success.id}`}>View sale</Link></Button><Button onClick={() => setSuccess(null)} size="sm">New sale</Button></div></div>}
       {formError && <p aria-live="assertive" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{formError}</p>}
       {statusMessage && <p aria-live="polite" className="rounded-lg border border-border bg-card p-3 text-sm" role="status">{statusMessage}</p>}
 
@@ -181,12 +202,13 @@ export function SalesCheckoutPage() {
             <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold" id="current-sale-heading">Current sale</h2><p aria-live="polite" className="mt-1 text-sm text-muted-foreground">{lineCount} {lineCount === 1 ? "item" : "items"}</p></div>{cart.length > 0 && <Button onClick={() => { setCart([]); setFormError("") }} size="sm" variant="outline"><RotateCcw aria-hidden="true" className="mr-1.5 size-4" />Clear sale</Button>}</div>
             {cart.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border p-6 text-center"><p className="font-medium">Your sale is empty</p><p className="mt-1 text-sm text-muted-foreground">Add a product to begin.</p></div> : <ul aria-label="Items in current sale" className="mt-4 divide-y divide-border">{cart.map((line) => {
               const liveProduct = activeProducts.find((product) => product.id === line.productId)
-              const lineTotal = calculateSaleLineTotal(line.quantity, line.unitPrice) ?? "0"
-              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><p className="break-words font-medium">{line.name}</p><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} × {formatSaleMoney(line.unitPrice, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{formatSaleMoney(lineTotal, business?.currency ?? "USD")}</span></p><p className="mt-1 text-xs text-muted-foreground">{liveProduct ? `${formatQuantity(liveProduct.currentQuantity)} available` : "Product no longer active"}</p></div><div className="flex shrink-0 gap-2"><Button aria-label={`Edit ${line.name}`} onClick={() => editLine(line)} size="sm" variant="outline">Edit</Button><Button aria-label={`Remove ${line.name}`} onClick={() => removeLine(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
+              const lineTotal = calculateSaleLineTotal(line.quantity, line.unitPrice)
+              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><p className="break-words font-medium">{line.name}</p><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} × {formatSaleMoney(line.unitPrice, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{lineTotal === null ? "—" : formatSaleMoney(lineTotal, business?.currency ?? "USD")}</span></p><p className="mt-1 text-xs text-muted-foreground">{liveProduct ? `${formatQuantity(liveProduct.currentQuantity)} available` : "Product no longer active"}</p></div><div className="flex shrink-0 gap-2"><Button aria-label={`Edit ${line.name}`} onClick={() => editLine(line)} size="sm" variant="outline">Edit</Button><Button aria-label={`Remove ${line.name}`} onClick={() => removeLine(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
             })}</ul>}
             <label className="mt-4 block space-y-1.5"><span className="text-sm font-medium">Sale note <span className="font-normal text-muted-foreground">(optional)</span></span><textarea className="min-h-20 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" maxLength={2000} onChange={(event) => setNotes(event.target.value)} placeholder="Add a note for this sale" value={notes} /></label>
-            <dl className="mt-5 border-t border-border pt-4"><div className="flex items-center justify-between"><dt className="text-sm text-muted-foreground">Subtotal</dt><dd className="text-lg font-semibold tabular-nums">{formatSaleMoney(total ?? "0", business?.currency ?? "USD")}</dd></div><div className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><dt>Total</dt><dd>{formatSaleMoney(total ?? "0", business?.currency ?? "USD")}</dd></div></dl>
-            <Button className="mt-5 w-full" disabled={!cart.length || recordSale.isPending || products.isLoading} onClick={() => void submitSale()} type="button">{recordSale.isPending ? <><span aria-hidden="true" className="mr-2 size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />Recording sale…</> : "Record sale"}</Button>
+            <dl className="mt-5 border-t border-border pt-4"><div className="flex items-center justify-between"><dt className="text-sm text-muted-foreground">Subtotal</dt><dd className="text-lg font-semibold tabular-nums">{total === null ? "—" : formatSaleMoney(total, business?.currency ?? "USD")}</dd></div><div className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><dt>Total</dt><dd>{total === null ? "—" : formatSaleMoney(total, business?.currency ?? "USD")}</dd></div></dl>
+            {total === null && <p className="mt-2 text-sm text-destructive" role="alert">This sale exceeds the maximum supported total. Adjust quantities or prices.</p>}
+            <Button className="mt-5 w-full" disabled={!cart.length || total === null || recordSale.isPending || products.isLoading} onClick={() => void submitSale()} type="button">{recordSale.isPending ? <><span aria-hidden="true" className="mr-2 size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />Recording sale…</> : "Record sale"}</Button>
             {recordSale.isPending && <p className="mt-2 text-center text-sm text-muted-foreground" role="status">Saving sale and updating inventory…</p>}
           </section>
         </div>

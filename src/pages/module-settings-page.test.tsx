@@ -43,9 +43,11 @@ describe("ModuleSettingsPage", () => {
     expect(within(core).queryByRole("switch")).not.toBeInTheDocument()
     const optional = screen.getByRole("region", { name: /optional modules/i })
     for (const module of optionalModules) {
-      expect(within(optional).getByRole("switch", { name: `${module.label} module` })).toHaveAttribute("aria-checked", "false")
-      expect(within(optional).getByText(module.description)).toBeInTheDocument()
-      expect(within(optional).getAllByText("Disabled · Coming soon")).toHaveLength(7)
+      const toggle = within(optional).getByRole("switch", { name: `${module.label} module` })
+      const moduleRow = toggle.closest("li")
+      expect(toggle).toHaveAttribute("aria-checked", "false")
+      expect(within(moduleRow!).getByText(module.description)).toBeInTheDocument()
+      expect(within(moduleRow!).getByText(module.key === "sales" ? "Disabled · Available" : "Disabled · Coming soon")).toBeInTheDocument()
     }
     expect(within(optional).getAllByRole("switch")).toHaveLength(7)
   })
@@ -58,7 +60,7 @@ describe("ModuleSettingsPage", () => {
     await user.click(sales)
     expect(update).toHaveBeenLastCalledWith("sales", true)
     expect(screen.getByRole("switch", { name: "Sales module" })).toHaveAttribute("aria-checked", "true")
-    expect(screen.getAllByText("Enabled · Coming soon")).toHaveLength(1)
+    expect(screen.getByText("Enabled · Available")).toBeInTheDocument()
     await user.click(screen.getByRole("switch", { name: "Sales module" }))
     expect(update).toHaveBeenLastCalledWith("sales", false)
     expect(screen.getByRole("switch", { name: "Sales module" })).toHaveAttribute("aria-checked", "false")

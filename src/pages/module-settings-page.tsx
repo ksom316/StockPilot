@@ -48,16 +48,17 @@ export function ModuleSettingsPage() {
       </section>
 
       <section aria-labelledby="optional-modules-title" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div><h2 className="text-lg font-semibold" id="optional-modules-title">Optional modules</h2><p className="mt-1 text-sm text-muted-foreground">Enabled modules appear in workspace navigation. Their features are still being built.</p></div>
+        <div><h2 className="text-lg font-semibold" id="optional-modules-title">Optional modules</h2><p className="mt-1 text-sm text-muted-foreground">Enabled modules appear in workspace navigation. Sales is available; other optional tools are coming soon.</p></div>
         {updateError && <p className="mt-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{updateError}</p>}
         <ul className="mt-4 divide-y divide-border">
           {optionalModules.map((module) => {
             const enabled = enabledModules.includes(module.key)
             const pending = pendingModule === module.key
+            const availability = module.key === "sales" ? "Available" : "Coming soon"
             return (
               <li className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center" key={module.key}>
-                <div className="min-w-0 flex-1"><h3 className="break-words font-medium">{module.label}</h3><p className="mt-1 break-words text-sm leading-5 text-muted-foreground">{module.description}</p><p className="mt-2 text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"} · Coming soon</p></div>
-                {canManage ? <button aria-checked={enabled} aria-label={`${module.label} module`} className={`inline-flex min-h-11 min-w-28 items-center justify-center gap-2 self-start rounded-md border px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-wait disabled:opacity-60 sm:self-auto ${enabled ? "border-primary/30 bg-primary/5" : "border-border bg-background hover:bg-muted"}`} disabled={Boolean(pendingModule)} onClick={() => void toggleModule(module.key, !enabled)} role="switch" type="button">{pending ? "Saving…" : enabled ? <><Check aria-hidden="true" className="size-4" />Enabled</> : "Enable"}</button> : <span className="shrink-0 text-sm text-muted-foreground">{enabled ? "Enabled" : "Disabled"} · Coming soon</span>}
+                <div className="min-w-0 flex-1"><h3 className="break-words font-medium">{module.label}</h3><p className="mt-1 break-words text-sm leading-5 text-muted-foreground">{module.description}</p><p className="mt-2 text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"} · {availability}</p></div>
+                {canManage ? <button aria-checked={enabled} aria-label={`${module.label} module`} className={`inline-flex min-h-11 min-w-28 items-center justify-center gap-2 self-start rounded-md border px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-wait disabled:opacity-60 sm:self-auto ${enabled ? "border-primary/30 bg-primary/5" : "border-border bg-background hover:bg-muted"}`} disabled={Boolean(pendingModule)} onClick={() => void toggleModule(module.key, !enabled)} role="switch" type="button">{pending ? "Saving…" : enabled ? <><Check aria-hidden="true" className="size-4" />Enabled</> : "Enable"}</button> : <span className="shrink-0 text-sm text-muted-foreground">{enabled ? "Enabled" : "Disabled"} · {availability}</span>}
               </li>
             )
           })}

@@ -12,6 +12,8 @@ import { NotFoundPage } from "@/pages/not-found-page"
 import { OnboardingPage } from "@/pages/onboarding-page"
 import { SignupPage } from "@/pages/signup-page"
 import { SalesCheckoutPage } from "@/pages/sales-checkout-page"
+import { SalesHistoryPage } from "@/pages/sales-history-page"
+import { SaleDetailPage } from "@/pages/sale-detail-page"
 
 export const routes = [
   {
@@ -39,7 +41,11 @@ export const routes = [
               { path: "/inventory", element: <InventoryPage /> },
               { path: "/inventory/movements", element: <InventoryMovementsPage /> },
               { path: "/settings/modules", element: <ModuleSettingsPage /> },
-              { element: <RequireModule module="sales" />, children: [{ path: "/sales", element: <SalesCheckoutPage /> }] },
+              { element: <RequireModule module="sales" />, children: [
+                { path: "/sales", element: <SalesCheckoutPage /> },
+                { path: "/sales/history", element: <SalesHistoryPage /> },
+                { path: "/sales/:saleId", element: <SaleDetailPage /> },
+              ] },
             ],
           },
         ],

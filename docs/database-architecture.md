@@ -33,7 +33,7 @@ Adding another optional module requires a migration that adds an enum value and 
 
 Callers pass a positive magnitude for every movement except `adjustment`, which accepts a signed delta. `record_inventory_movement` locks the product row with `FOR UPDATE`, calculates and validates the new balance, updates the product, and inserts the movement. A failure rolls back the whole statement. Negative inventory is rejected by both the function and table constraints.
 
-Manual inventory uses `source_type = 'manual'` and does not depend on any optional module. Future Sales and Purchasing code will call the same function with `source_type = 'sales'` or `'purchasing'` and place its future record UUID in `source_reference`; no foreign key is added until those modules exist.
+Manual inventory uses `source_type = 'manual'` and does not depend on any optional module. Sales uses its own atomic `record_sale` boundary because it must write immutable sale snapshots, deduct stock, and append the linked movement as one transaction. Do not split those operations across RPCs. Future Purchasing may use a similarly scoped transaction boundary.
 
 ## Security boundary
 
@@ -75,13 +75,13 @@ Each sale item snapshots the product name, SKU, quantity, and transaction unit p
 
 All active owner, manager, employee, and cashier members can read and record sales. This intentionally allows cashiers to sell while the existing manual inventory RPC continues to reject cashier adjustments. Clients receive read-only access to `sales` and `sale_items`; they cannot directly insert, update, or delete sales, forge totals or actors, or mutate the ledger. Sales RLS hides both tables across tenants.
 
-Current Sales limitations are deliberate: there is no customer, payment, tax, discount, receipt, refund, cancellation, or editing workflow. Recorded sales are immutable. Reversal and cancellation require a future audited workflow that restores stock rather than deleting history.
+Current Sales limitations are deliberate: there is no customer, payment, tax, discount, printable receipt, refund, cancellation, or editing workflow. Recorded sales are immutable. Reversal and cancellation require a future audited workflow that restores stock rather than deleting history. History filtering is currently client-side over the loaded business history; pagination/server-side filtering may be needed as sales volume grows.
 
 ## Deliberately deferred
 
 - Invitation and ownership-transfer workflows
-- Sales UI, refunds/cancellations, purchasing, customer, supplier, expense, AI, forecast, notification, and analytics tables
+- Refunds/cancellations, purchasing, customer, supplier, expense, AI, forecast, notification, and analytics tables
 - Seed or demo data
-- UI and generated TypeScript database types
+- Generated TypeScript database types
 - Finer role capabilities and cashier inventory permissions
 - Backend integration for trusted Purchasing movement sources

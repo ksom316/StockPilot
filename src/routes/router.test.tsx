@@ -12,6 +12,8 @@ vi.mock("@/features/inventory/inventory-queries", () => ({
 }))
 vi.mock("@/features/sales/sales-queries", () => ({
   useRecordSale: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSalesHistory: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
+  useSaleDetail: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
 }))
 import {
   createAuthValue,
@@ -124,6 +126,26 @@ describe("authentication routes", () => {
     expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
     const navigation = screen.getByRole("navigation", { name: /workspace navigation/i })
     expect(within(navigation).queryByRole("link", { name: "Sales" })).not.toBeInTheDocument()
+  })
+
+  it.each(["owner", "manager", "employee", "cashier"] as const)("allows %s to view Sales history when enabled", async (role) => {
+    renderRoute("/sales/history", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["sales"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /sales history/i })).toBeInTheDocument()
+  })
+
+  it("keeps Sales history inaccessible when Sales is disabled", async () => {
+    renderRoute("/sales/history", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+  })
+
+  it.each(["owner", "manager", "employee", "cashier"] as const)("allows %s to open the guarded sale-detail route", async (role) => {
+    renderRoute("/sales/sale-id", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["sales"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /sale unavailable/i })).toBeInTheDocument()
+  })
+
+  it("keeps direct sale-detail access unavailable when Sales is disabled", async () => {
+    renderRoute("/sales/sale-id", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
   })
 
   it("keeps Inventory available with no optional modules enabled", async () => {

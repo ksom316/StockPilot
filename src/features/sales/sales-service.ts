@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase"
-import { SalesDataError, type RecordedSale, type RecordSaleInput } from "@/features/sales/sales-types"
+import { SalesDataError, type RecordedSale, type RecordSaleInput, type SaleDetail, type SaleItem, type SaleSummary } from "@/features/sales/sales-types"
+
+const saleSelect = "id,business_id,sale_reference,sold_at,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,sale_items(id,product_id,product_name,product_sku,quantity_text:quantity::text,unit_price_text:unit_price::text,line_total_text:line_total::text)"
 
 export async function recordSale(input: RecordSaleInput): Promise<RecordedSale> {
   if (!supabase) throw new SalesDataError("Sales is not configured. Refresh and try again.")
@@ -22,4 +24,75 @@ export async function recordSale(input: RecordSaleInput): Promise<RecordedSale> 
   }
 
   return { id: String(data.id), sale_reference: String(data.sale_reference) }
+}
+
+export async function fetchSales(businessId: string): Promise<SaleSummary[]> {
+  if (!supabase) throw new SalesDataError("Sales history is not configured. Refresh and try again.")
+  const { data, error } = await supabase
+    .from("sales")
+    .select(saleSelect)
+    .eq("business_id", businessId)
+    .order("sold_at", { ascending: false })
+
+  if (error) throw new SalesDataError("We couldn't load sales history. Please try again.", error.code)
+  return (data ?? []).map((row) => {
+    const items = (row.sale_items ?? []).map(mapSaleItem)
+    return {
+      id: row.id,
+      businessId: row.business_id,
+      saleReference: row.sale_reference,
+      soldAt: row.sold_at,
+      subtotal: row.subtotal_text,
+      total: row.total_text,
+      notes: row.notes,
+      createdBy: row.created_by,
+      itemCount: items.length,
+      items: items.map(({ productName, productSku }) => ({ productName, productSku })),
+    }
+  })
+}
+
+export async function fetchSale(businessId: string, saleId: string): Promise<SaleDetail | null> {
+  if (!supabase) throw new SalesDataError("Sale details are not configured. Refresh and try again.")
+  const { data, error } = await supabase
+    .from("sales")
+    .select(saleSelect)
+    .eq("business_id", businessId)
+    .eq("id", saleId)
+    .maybeSingle()
+
+  if (error) throw new SalesDataError("We couldn't load this sale. Please try again.", error.code)
+  if (!data) return null
+  const items = (data.sale_items ?? []).map(mapSaleItem)
+  return {
+    id: data.id,
+    businessId: data.business_id,
+    saleReference: data.sale_reference,
+    soldAt: data.sold_at,
+    subtotal: data.subtotal_text,
+    total: data.total_text,
+    notes: data.notes,
+    createdBy: data.created_by,
+    items,
+  }
+}
+
+function mapSaleItem(row: {
+  id: string
+  product_id: string
+  product_name: string
+  product_sku: string
+  quantity_text: string
+  unit_price_text: string
+  line_total_text: string
+}): SaleItem {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    productName: row.product_name,
+    productSku: row.product_sku,
+    quantity: row.quantity_text,
+    unitPrice: row.unit_price_text,
+    lineTotal: row.line_total_text,
+  }
 }

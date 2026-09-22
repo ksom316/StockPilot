@@ -4,6 +4,7 @@ import { parseQuantity } from "@/features/inventory/inventory-decimal"
 const pricePattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,4})?$/
 const priceScale = 10_000n
 const quantityScale = 1_000n
+const maximumSaleAmountScaled = 10n ** 19n - 1n
 
 export interface ParsedSalePrice {
   value: string
@@ -23,7 +24,8 @@ export function calculateSaleLineTotal(quantity: string, unitPrice: string): str
   const parsedPrice = parseSalePrice(unitPrice)
   if (!parsedQuantity || !parsedPrice) return null
   const product = parsedQuantity.scaled * parsedPrice.scaled
-  return formatScaledMoney((product + quantityScale / 2n) / quantityScale)
+  const rounded = (product + quantityScale / 2n) / quantityScale
+  return rounded <= maximumSaleAmountScaled ? formatScaledMoney(rounded) : null
 }
 
 export function calculateSaleTotal(lines: Array<{ quantity: string; unitPrice: string }>): string | null {
@@ -34,6 +36,7 @@ export function calculateSaleTotal(lines: Array<{ quantity: string; unitPrice: s
     const parsed = parseSalePrice(lineTotal)
     if (!parsed) return null
     total += parsed.scaled
+    if (total > maximumSaleAmountScaled) return null
   }
   return formatScaledMoney(total)
 }

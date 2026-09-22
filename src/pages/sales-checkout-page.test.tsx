@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { Product } from "@/features/inventory/inventory-types"
@@ -23,7 +24,7 @@ const products: Product[] = [
 ]
 
 function renderCheckout() {
-  return render(<TestBusinessProvider value={createBusinessValue({ business: testBusiness, enabledModules: ["sales"] })}><SalesCheckoutPage /></TestBusinessProvider>)
+  return render(<TestBusinessProvider value={createBusinessValue({ business: testBusiness, enabledModules: ["sales"] })}><MemoryRouter><SalesCheckoutPage /></MemoryRouter></TestBusinessProvider>)
 }
 
 describe("sales checkout", () => {
@@ -67,6 +68,9 @@ describe("sales checkout", () => {
     await user.click(screen.getByRole("button", { name: /record sale/i }))
     expect(salesMocks.mutateAsync).toHaveBeenCalledWith({ items: [{ product_id: "p1", quantity: "3", unit_price: "9.5" }], notes: null })
     expect(await screen.findByText("S-2026-0001")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "View sale" })).toHaveAttribute("href", "/sales/sale-1")
+    await user.click(screen.getByRole("button", { name: "New sale" }))
+    expect(screen.queryByText("S-2026-0001")).not.toBeInTheDocument()
     expect(screen.getByText("Your sale is empty")).toBeInTheDocument()
   })
 
@@ -95,5 +99,19 @@ describe("sales checkout", () => {
     await user.click(recordButton)
     expect(salesMocks.mutateAsync).toHaveBeenCalledTimes(1)
     finishRequest?.({ id: "sale-1", sale_reference: "S-ONE" })
+  })
+
+  it("does not add a line that would exceed the database total precision", async () => {
+    const user = userEvent.setup()
+    inventoryMocks.data = products.map((product) => product.id === "p1" || product.id === "p2"
+      ? { ...product, sellingPrice: "999999999999999.9999", currentQuantity: "10" }
+      : product)
+    renderCheckout()
+    await user.selectOptions(screen.getByLabelText("Product"), "p1")
+    await user.click(screen.getByRole("button", { name: /add to sale/i }))
+    await user.selectOptions(screen.getByLabelText("Product"), "p2")
+    await user.click(screen.getByRole("button", { name: /add to sale/i }))
+    expect(screen.getByRole("alert")).toHaveTextContent(/adding this item would exceed/i)
+    expect(screen.getByRole("list", { name: /items in current sale/i }).querySelectorAll("li")).toHaveLength(1)
   })
 })

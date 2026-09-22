@@ -26,7 +26,7 @@ export async function fetchCategories(businessId: string): Promise<Category[]> {
 export async function fetchProducts(businessId: string): Promise<Product[]> {
   const { data, error } = await requireClient()
     .from("products")
-    .select("id, business_id, category_id, name, sku, description, cost_price, selling_price, current_quantity, low_stock_threshold, is_active, categories(name)")
+    .select("id, business_id, category_id, name, sku, description, cost_price_text:cost_price::text, selling_price_text:selling_price::text, current_quantity_text:current_quantity::text, low_stock_threshold_text:low_stock_threshold::text, is_active, categories(name)")
     .eq("business_id", businessId)
     .order("name")
 
@@ -41,10 +41,10 @@ export async function fetchProducts(businessId: string): Promise<Product[]> {
       name: row.name,
       sku: row.sku,
       description: row.description,
-      costPrice: String(row.cost_price),
-      sellingPrice: String(row.selling_price),
-      currentQuantity: String(row.current_quantity),
-      lowStockThreshold: String(row.low_stock_threshold),
+      costPrice: row.cost_price_text,
+      sellingPrice: row.selling_price_text,
+      currentQuantity: row.current_quantity_text,
+      lowStockThreshold: row.low_stock_threshold_text,
       isActive: row.is_active,
     }
   })
@@ -53,7 +53,7 @@ export async function fetchProducts(businessId: string): Promise<Product[]> {
 export async function fetchInventoryMovements(businessId: string): Promise<InventoryMovement[]> {
   const { data, error } = await requireClient()
     .from("inventory_movements")
-    .select("id, business_id, product_id, movement_type, quantity, quantity_before, quantity_after, reason, actor_user_id, source_type, source_reference, created_at, products(name, sku)")
+    .select("id, business_id, product_id, movement_type, quantity_text:quantity::text, quantity_before_text:quantity_before::text, quantity_after_text:quantity_after::text, reason, actor_user_id, source_type, source_reference, created_at, products(name, sku)")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false })
 
@@ -67,9 +67,9 @@ export async function fetchInventoryMovements(businessId: string): Promise<Inven
       productName: product?.name ?? "Unknown product",
       productSku: product?.sku ?? "",
       movementType: row.movement_type,
-      quantity: String(row.quantity),
-      quantityBefore: String(row.quantity_before),
-      quantityAfter: String(row.quantity_after),
+      quantity: row.quantity_text,
+      quantityBefore: row.quantity_before_text,
+      quantityAfter: row.quantity_after_text,
       reason: row.reason,
       actorUserId: row.actor_user_id,
       sourceType: row.source_type,
