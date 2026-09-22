@@ -33,17 +33,46 @@ where business_id = '10000000-0000-0000-0000-000000000911'
   and module = 'sales';
 alter table public.business_modules enable trigger business_modules_set_updated_at;
 
-select pg_sleep(0.01);
-update public.business_modules
-set enabled = true
-where business_id = '10000000-0000-0000-0000-000000000911'
-  and module = 'sales';
+-- PostgreSQL runs same-kind triggers in name order. Delay this update inside the
+-- statement before the production trigger executes, then capture both clocks
+-- from that same statement. statement_timestamp() would equal statement_started_at;
+-- clock_timestamp() must reflect the later trigger execution.
+create function private.aaa_test_delay_business_module_update()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  perform pg_catalog.pg_sleep(0.02);
+  return new;
+end;
+$$;
+
+create trigger aaa_test_delay_business_module_update
+before update on public.business_modules
+for each row execute function private.aaa_test_delay_business_module_update();
+
+create temporary table sales_execution_evidence (
+  boundary timestamptz not null,
+  statement_started_at timestamptz not null
+) on commit drop;
+
+with transitioned as (
+  update public.business_modules
+  set enabled = true
+  where business_id = '10000000-0000-0000-0000-000000000911'
+    and module = 'sales'
+  returning updated_at, statement_timestamp() as statement_started_at
+)
+insert into sales_execution_evidence (boundary, statement_started_at)
+select updated_at, statement_started_at from transitioned;
+
+drop trigger aaa_test_delay_business_module_update on public.business_modules;
+drop function private.aaa_test_delay_business_module_update();
 
 select ok(
-  (select updated_at > transaction_timestamp()
-   from public.business_modules
-   where business_id = '10000000-0000-0000-0000-000000000911' and module = 'sales'),
-  'Sales transition uses statement time rather than transaction start time'
+  (select boundary > statement_started_at from sales_execution_evidence),
+  'Sales transition records trigger execution time rather than statement start time'
 );
 select ok(
   (select updated_at > current_timestamp - interval '1 day'
