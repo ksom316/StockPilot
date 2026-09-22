@@ -91,7 +91,8 @@ export class OpenRouterProvider implements AiProvider {
       let envelope: OpenRouterEnvelope
       try {
         envelope = await response.json() as OpenRouterEnvelope
-      } catch {
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") throw error
         throw new AnalystError(502, "INVALID_PROVIDER_RESPONSE", "The AI provider returned an invalid response.")
       }
       const content = envelope.choices?.[0]?.message?.content

@@ -314,6 +314,15 @@ describe("OpenRouter provider", () => {
       .rejects.toMatchObject({ code: "INVALID_PROVIDER_RESPONSE" })
   })
 
+  it("maps an abort during response-body decoding to PROVIDER_TIMEOUT", async () => {
+    const fetcher = vi.fn(async () => ({
+      ok: true,
+      json: async () => { throw new DOMException("aborted", "AbortError") },
+    }) as Response)
+    await expect(new OpenRouterProvider({ apiKey: "key", model: "model" }, fetcher).analyze(input))
+      .rejects.toMatchObject({ code: "PROVIDER_TIMEOUT", status: 504 })
+  })
+
   it("maps aborts to PROVIDER_TIMEOUT", async () => {
     const fetcher = vi.fn((_url: string | URL | Request, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")))
