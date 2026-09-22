@@ -1,6 +1,6 @@
 import { ArrowUpDown, FolderCog, History, PackageOpen, Pencil, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { useBusiness } from "@/features/business/business-context"
@@ -21,18 +21,20 @@ function StockBadge({ state }: { state: StockState }) {
 }
 
 export function InventoryPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { role } = useBusiness()
   const { business, categories, products } = useInventoryCatalog()
   const mutations = useInventoryMutations()
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("active")
-  const [stockFilter, setStockFilter] = useState("all")
   const [showProductForm, setShowProductForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [stockProduct, setStockProduct] = useState<Product | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
+  const stockParam = searchParams.get("stock")
+  const stockFilter = stockParam === "attention" || stockParam === "low" || stockParam === "out" ? stockParam : "all"
   const canManage = role === "owner" || role === "manager" || role === "employee"
 
   const filteredProducts = useMemo(() => {
@@ -42,7 +44,7 @@ export function InventoryPage() {
       const matchesCategory = categoryFilter === "all" || (categoryFilter === "uncategorized" ? !product.categoryId : product.categoryId === categoryFilter)
       const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? product.isActive : !product.isActive)
       const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
-      const matchesStock = stockFilter === "all" || (stockFilter === "attention" ? stockState !== "In stock" : stockState === stockFilter)
+      const matchesStock = stockFilter === "all" || (stockFilter === "attention" ? stockState !== "In stock" : stockFilter === "low" ? stockState === "Low stock" : stockState === "Out of stock")
       return matchesSearch && matchesCategory && matchesStatus && matchesStock
     })
   }, [categoryFilter, products.data, search, statusFilter, stockFilter])
@@ -110,11 +112,11 @@ export function InventoryPage() {
         </label>
         <label>
           <span className="sr-only">Filter by stock attention</span>
-          <select className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setStockFilter(event.target.value)} value={stockFilter}>
+          <select className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => { const next = new URLSearchParams(searchParams); if (event.target.value === "all") next.delete("stock"); else next.set("stock", event.target.value); setSearchParams(next, { replace: true }) }} value={stockFilter}>
             <option value="all">All stock levels</option>
             <option value="attention">Needs attention</option>
-            <option value="Low stock">Low stock</option>
-            <option value="Out of stock">Out of stock</option>
+            <option value="low">Low stock</option>
+            <option value="out">Out of stock</option>
           </select>
         </label>
       </div>

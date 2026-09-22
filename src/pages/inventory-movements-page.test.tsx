@@ -10,9 +10,9 @@ vi.mock("@/features/inventory/inventory-queries", () => ({ useInventoryMovements
 import { InventoryMovementsPage } from "@/pages/inventory-movements-page"
 
 const sampleMovements = [
-  { id: "m1", businessId: "b1", productId: "p1", productName: "Barcode Scanner", productSku: "SCAN-1", movementType: "stock_in", quantity: "10", quantityBefore: "0", quantityAfter: "10", reason: "Opening count", actorUserId: "u1", sourceType: "manual", sourceReference: null, createdAt: "2026-09-20T12:00:00.000Z" },
-  { id: "m2", businessId: "b1", productId: "p1", productName: "Barcode Scanner", productSku: "SCAN-1", movementType: "stock_out", quantity: "-2.5", quantityBefore: "10", quantityAfter: "7.5", reason: null, actorUserId: "u1", sourceType: "manual", sourceReference: null, createdAt: "2026-09-21T12:00:00.000Z" },
-  { id: "m3", businessId: "b1", productId: "p2", productName: "USB Cable", productSku: "USB-9", movementType: "damaged", quantity: "-1", quantityBefore: "2", quantityAfter: "1", reason: "Damaged box", actorUserId: null, sourceType: "system", sourceReference: null, createdAt: "2026-09-22T12:00:00.000Z" },
+  { id: "m1", businessId: "b1", productId: "00000000-0000-4000-8000-000000000001", productName: "Barcode Scanner", productSku: "SCAN-1", movementType: "stock_in", quantity: "10", quantityBefore: "0", quantityAfter: "10", reason: "Opening count", actorUserId: "u1", sourceType: "manual", sourceReference: null, createdAt: "2026-09-20T12:00:00.000Z" },
+  { id: "m2", businessId: "b1", productId: "00000000-0000-4000-8000-000000000001", productName: "Barcode Scanner", productSku: "SCAN-1", movementType: "stock_out", quantity: "-2.5", quantityBefore: "10", quantityAfter: "7.5", reason: null, actorUserId: "u1", sourceType: "manual", sourceReference: null, createdAt: "2026-09-21T12:00:00.000Z" },
+  { id: "m3", businessId: "b1", productId: "00000000-0000-4000-8000-000000000002", productName: "USB Cable", productSku: "USB-9", movementType: "damaged", quantity: "-1", quantityBefore: "2", quantityAfter: "1", reason: "Damaged box", actorUserId: null, sourceType: "system", sourceReference: null, createdAt: "2026-09-22T12:00:00.000Z" },
 ]
 
 function renderHistory(path = "/inventory/movements") {
@@ -39,7 +39,7 @@ describe("InventoryMovementsPage", () => {
     await user.selectOptions(screen.getByRole("combobox", { name: /filter by movement type/i }), "damaged")
     expect(screen.getAllByText("Damaged").length).toBeGreaterThan(0)
     expect(screen.queryAllByText("Barcode Scanner")).toHaveLength(0)
-    await user.selectOptions(screen.getByRole("combobox", { name: /filter by product/i }), "p2")
+    await user.selectOptions(screen.getByRole("combobox", { name: /filter by product/i }), "00000000-0000-4000-8000-000000000002")
     expect(screen.getAllByText("USB Cable").length).toBeGreaterThan(0)
     expect(screen.queryAllByText("Barcode Scanner")).toHaveLength(0)
     await user.clear(screen.getByRole("searchbox", { name: /search product name or sku/i }))
@@ -48,8 +48,14 @@ describe("InventoryMovementsPage", () => {
   })
 
   it("honors product-specific history links", () => {
-    renderHistory("/inventory/movements?productId=p1")
+    renderHistory("/inventory/movements?productId=00000000-0000-4000-8000-000000000001")
     expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
     expect(screen.queryAllByText("USB Cable")).toHaveLength(0)
+  })
+
+  it("ignores invalid filter parameters safely", () => {
+    renderHistory("/inventory/movements?productId=not-a-uuid&type=not-a-movement&from=2026-99-99")
+    expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("USB Cable").length).toBeGreaterThan(0)
   })
 })

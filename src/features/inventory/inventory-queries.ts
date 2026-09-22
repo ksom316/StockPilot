@@ -29,19 +29,25 @@ export function useInventoryMovements() {
   })
 }
 
-export function useInventoryCatalog() {
+export function useInventoryProducts() {
   const { business } = useBusiness()
   const businessId = business?.id ?? ""
-  const categories = useQuery({
-    queryKey: inventoryKeys.categories(businessId),
-    queryFn: () => fetchCategories(businessId),
-    enabled: Boolean(businessId),
-  })
   const products = useQuery({
     queryKey: inventoryKeys.products(businessId),
     queryFn: () => fetchProducts(businessId),
     enabled: Boolean(businessId),
   })
+  return products
+}
+
+export function useInventoryCatalog() {
+  const { business } = useBusiness()
+  const categories = useQuery({
+    queryKey: inventoryKeys.categories(business?.id ?? ""),
+    queryFn: () => fetchCategories(business?.id ?? ""),
+    enabled: Boolean(business?.id),
+  })
+  const products = useInventoryProducts()
 
   return { business, categories, products }
 }
@@ -51,16 +57,17 @@ export function useInventoryMutations() {
   const businessId = business?.id ?? ""
   const queryClient = useQueryClient()
   const invalidateProducts = () => queryClient.invalidateQueries({ queryKey: inventoryKeys.products(businessId) })
-  const invalidateCategories = async () => {
-    await queryClient.invalidateQueries({ queryKey: inventoryKeys.categories(businessId) })
-    await invalidateProducts()
-  }
+  const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: inventoryKeys.categories(businessId) })
+  const invalidateCategoryName = async () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: inventoryKeys.categories(businessId) }),
+    invalidateProducts(),
+  ])
 
   return {
     createProduct: useMutation({ mutationFn: (input: ProductInput) => createProduct(businessId, input), onSuccess: invalidateProducts }),
     updateProduct: useMutation({ mutationFn: ({ id, input }: { id: string; input: ProductInput }) => updateProduct(id, input), onSuccess: invalidateProducts }),
     createCategory: useMutation({ mutationFn: (input: CategoryInput) => createCategory(businessId, input), onSuccess: invalidateCategories }),
-    updateCategory: useMutation({ mutationFn: ({ id, input }: { id: string; input: CategoryInput }) => updateCategory(id, input), onSuccess: invalidateCategories }),
+    updateCategory: useMutation({ mutationFn: ({ id, input }: { id: string; input: CategoryInput }) => updateCategory(id, input), onSuccess: invalidateCategoryName }),
     recordMovement: useMutation({
       mutationFn: (input: StockMovementInput) => recordStockMovement(input),
       onSuccess: async () => {

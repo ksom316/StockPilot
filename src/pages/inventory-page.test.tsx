@@ -26,9 +26,9 @@ function queryResult<T>(data: T) {
   return { data, isLoading: false, isError: false, refetch: vi.fn() }
 }
 
-function renderInventory(role: "owner" | "manager" | "employee" | "cashier" = "owner") {
+function renderInventory(role: "owner" | "manager" | "employee" | "cashier" = "owner", path = "/inventory") {
   return render(
-    <MemoryRouter><TestBusinessProvider value={createBusinessValue({ business: testBusiness, membership: { ...testMembership, role }, role, onboardingRequired: false })}>
+    <MemoryRouter initialEntries={[path]}><TestBusinessProvider value={createBusinessValue({ business: testBusiness, membership: { ...testMembership, role }, role, onboardingRequired: false })}>
       <InventoryPage />
     </TestBusinessProvider></MemoryRouter>,
   )
@@ -74,6 +74,16 @@ describe("InventoryPage", () => {
     expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
     expect(screen.getAllByText("USB Cable").length).toBeGreaterThan(0)
     expect(screen.getAllByRole("link", { name: /view stock history for barcode scanner/i })[0]).toHaveAttribute("href", "/inventory/movements?productId=p1")
+  })
+
+  it("initializes stock attention from the URL and treats invalid values as all stock", () => {
+    const { unmount } = renderInventory("owner", "/inventory?stock=attention")
+    expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("USB Cable").length).toBeGreaterThan(0)
+    unmount()
+    renderInventory("owner", "/inventory?stock=bogus")
+    expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("USB Cable").length).toBeGreaterThan(0)
   })
 
   it("allows an inventory staff role to open product creation", async () => {

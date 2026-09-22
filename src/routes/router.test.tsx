@@ -8,6 +8,7 @@ import { routes } from "@/routes/router"
 
 vi.mock("@/features/inventory/inventory-queries", () => ({
   useInventoryMovements: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
+  useInventoryProducts: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
 }))
 import {
   createAuthValue,

@@ -22,6 +22,15 @@ const sourceLabels: Record<string, string> = {
   purchasing: "Purchasing",
 }
 
+const movementTypes = new Set<InventoryMovementType>(Object.keys(movementLabels) as InventoryMovementType[])
+const uuidPattern = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i
+
+function safeDate(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return ""
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : ""
+}
+
 function formatTimestamp(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "Unknown date"
@@ -42,10 +51,12 @@ export function InventoryMovementsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const movements = useInventoryMovements()
   const search = searchParams.get("q") ?? ""
-  const typeFilter = searchParams.get("type") ?? "all"
-  const productFilter = searchParams.get("productId") ?? "all"
-  const startDate = searchParams.get("from") ?? ""
-  const endDate = searchParams.get("to") ?? ""
+  const rawType = searchParams.get("type")
+  const typeFilter = rawType && movementTypes.has(rawType as InventoryMovementType) ? rawType : "all"
+  const rawProduct = searchParams.get("productId")
+  const productFilter = rawProduct && uuidPattern.test(rawProduct) ? rawProduct : "all"
+  const startDate = safeDate(searchParams.get("from"))
+  const endDate = safeDate(searchParams.get("to"))
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams)
