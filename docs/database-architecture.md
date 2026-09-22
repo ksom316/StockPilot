@@ -132,6 +132,16 @@ The initial Expenses screen loads the current business's expense rows and filter
 
 All money and derived values use PostgreSQL `numeric`, with stored money at `numeric(19,4)`, quantities at `numeric(18,3)`, four-decimal multiplication rounding, and six-decimal margin rounding. API consumers must preserve numeric values as decimal strings rather than JavaScript floating-point numbers.
 
+## Descriptive business overview analytics
+
+`get_business_overview(business_id, start_date, end_date)` is the bounded Phase 8 operational analytics boundary for Inventory, Sales, and Purchasing. It requires an authenticated active business member and returns the business timezone, explicit module state, and structured aggregate facts. Date inputs are inclusive business-local calendar dates; Sales and Purchasing timestamp filters use half-open UTC bounds derived from the validated IANA timezone. Ranges are limited to 366 calendar days, and Sales daily trend output includes every local date (including zero-activity days).
+
+Inventory counts are always available to active members. Active products with zero quantity are out of stock; positive quantities at or below the low-stock threshold are low stock, matching the Inventory UI. No stock value or heterogeneous total quantity is reported. Sales metrics appear only when Sales is enabled and use immutable Sales and item data: Recorded Sales, sale count, average Recorded Sale rounded to four decimals (NULL for no sales), Units Sold During Period, top five products ranked by units sold, and a zero-filled daily trend. Product labels come from transaction snapshots; if a product was renamed during the selected range, its latest snapshot in that range labels the single aggregated product entry. These are descriptive facts, not payments, accounting revenue, or fast-moving predictions.
+
+Purchasing metrics appear only when Purchasing is enabled and the active role is owner, manager, or employee, matching existing Purchasing read access. Cashiers can distinguish the module's enabled state but receive no Purchasing measurements. Purchase Receipt totals and quantities received are separate operational activity, never expenses or COGS. Disabled modules are explicitly marked disabled; enabled modules with no activity return zero totals and counts, empty top-product arrays, zero-filled trend buckets, and a NULL average where applicable. Numeric money/quantity fields inside JSON are serialized as decimal strings to avoid JavaScript floating-point loss; counts are integers.
+
+Finance is intentionally not included: authorized dashboard callers continue to use `get_financial_summary` as the sole source of operating expenses and estimated profitability. Customer analytics are deferred. The overview performs no recommendations, comparisons, forecasts, or AI analysis; later AI features should consume these trusted structured facts rather than recompute them. Existing business/date indexes on Sales and Purchasing support the bounded timestamp filters; no extra index is added for this foundation.
+
 ## Deliberately deferred
 
 - Invitation and ownership-transfer workflows
