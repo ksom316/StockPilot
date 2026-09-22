@@ -120,6 +120,20 @@ describe("sales checkout", () => {
     expect(screen.queryByLabelText("Sale customer")).not.toBeInTheDocument()
   })
 
+  it("clears a selected customer when the business changes and keeps the cart", async () => {
+    const user = userEvent.setup()
+    customerMocks.data = [{ id: "customer-1", name: "Avery Example", phone: null, email: null, isActive: true }]
+    const valueA = createBusinessValue({ business: testBusiness, enabledModules: ["sales", "customers"] })
+    const view = render(<TestBusinessProvider value={valueA}><MemoryRouter><SalesCheckoutPage /></MemoryRouter></TestBusinessProvider>)
+    await user.selectOptions(screen.getByLabelText("Product"), "p1")
+    await user.click(screen.getByRole("button", { name: /add to sale/i }))
+    await user.selectOptions(screen.getByLabelText("Sale customer"), "customer-1")
+    const valueB = createBusinessValue({ business: { ...testBusiness, id: "business-2" }, enabledModules: ["sales", "customers"] })
+    view.rerender(<TestBusinessProvider value={valueB}><MemoryRouter><SalesCheckoutPage /></MemoryRouter></TestBusinessProvider>)
+    expect(screen.getByLabelText("Sale customer")).toHaveValue("")
+    expect(screen.getByRole("list", { name: /items in current sale/i }).querySelectorAll("li")).toHaveLength(1)
+  })
+
   it.each(["555-0100", "avery@example.test"])("filters active checkout customers by phone or email (%s)", async (term) => {
     const user = userEvent.setup()
     customerMocks.data = [

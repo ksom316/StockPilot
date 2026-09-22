@@ -3,10 +3,10 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import type { PropsWithChildren } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const service = vi.hoisted(() => ({ fetchManagedCustomers: vi.fn(), lookupCustomers: vi.fn(), createCustomer: vi.fn(), updateCustomer: vi.fn(), setCustomerActive: vi.fn() }))
+const service = vi.hoisted(() => ({ fetchManagedCustomers: vi.fn(), fetchCustomerActivity: vi.fn(), lookupCustomers: vi.fn(), createCustomer: vi.fn(), updateCustomer: vi.fn(), setCustomerActive: vi.fn() }))
 vi.mock("@/features/customers/customer-service", () => service)
 
-import { customerKeys, useCustomerMutations, useCustomers } from "@/features/customers/customer-queries"
+import { customerKeys, useCustomerActivity, useCustomerMutations, useCustomers } from "@/features/customers/customer-queries"
 import { TestBusinessProvider, createBusinessValue, testBusiness } from "@/test/auth-test-utils"
 
 describe("customer queries", () => {
@@ -65,6 +65,47 @@ describe("customer queries", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["customers", testBusiness.id, "directory"] })
     expect(spy).not.toHaveBeenCalledWith(expect.objectContaining({ queryKey: expect.arrayContaining(["finance"]) }))
     expect(spy).not.toHaveBeenCalledWith(expect.objectContaining({ queryKey: expect.arrayContaining(["sales"]) }))
+  })
+
+  it("refreshes the current customer activity and basic lookup on edit/lifecycle changes", async () => {
+    const spy = vi.spyOn(client, "invalidateQueries")
+    const value = createBusinessValue({ business: testBusiness, role: "manager", enabledModules: ["customers"] })
+    const { result } = renderHook(() => useCustomerMutations(), { wrapper: makeWrapper(value) })
+    await act(async () => { await result.current.update.mutateAsync({ id: "c1", input: { name: "New", phone: null, email: null, note: null } }) })
+    expect(spy).toHaveBeenCalledWith({ queryKey: customerKeys.lookup(testBusiness.id) })
+    expect(spy).toHaveBeenCalledWith({ queryKey: customerKeys.activity(testBusiness.id, "c1") })
+    spy.mockClear()
+    await act(async () => { await result.current.setActive.mutateAsync({ id: "c1", active: false }) })
+    expect(spy).toHaveBeenCalledWith({ queryKey: customerKeys.lookup(testBusiness.id) })
+    expect(spy).toHaveBeenCalledWith({ queryKey: customerKeys.activity(testBusiness.id, "c1") })
+  })
+
+  it("invalidates only the current business customer directory and lookup after create", async () => {
+    const spy = vi.spyOn(client, "invalidateQueries")
+    service.createCustomer.mockResolvedValue("created-customer")
+    const value = createBusinessValue({ business: testBusiness, role: "cashier", enabledModules: ["customers"] })
+    const { result } = renderHook(() => useCustomerMutations(), { wrapper: makeWrapper(value) })
+    await act(async () => { await result.current.create.mutateAsync({ name: "Avery", phone: null, email: null, note: null }) })
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["customers", testBusiness.id, "directory"] })
+    expect(spy).toHaveBeenCalledWith({ queryKey: customerKeys.lookup(testBusiness.id) })
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["customers"] })
+  })
+
+  it.each(["employee", "cashier"] as const)("does not enable customer activity query for %s", (role) => {
+    const value = createBusinessValue({ business: testBusiness, role, enabledModules: ["customers"] })
+    const { result } = renderHook(() => useCustomerActivity("c1"), { wrapper: makeWrapper(value) })
+    expect(result.current.fetchStatus).toBe("idle")
+    expect(service.fetchCustomerActivity).not.toHaveBeenCalled()
+    expect(customerKeys.activity(testBusiness.id, "c1")).toContain(testBusiness.id)
+  })
+
+  it("uses business and customer IDs in privileged activity queries", async () => {
+    service.fetchCustomerActivity.mockResolvedValue({ id: "c1" })
+    const value = createBusinessValue({ business: testBusiness, role: "manager", enabledModules: ["customers"] })
+    const { result } = renderHook(() => useCustomerActivity("c1"), { wrapper: makeWrapper(value) })
+    await waitFor(() => expect(result.current.data).toBeDefined())
+    expect(service.fetchCustomerActivity).toHaveBeenCalledWith(testBusiness.id, "c1")
+    expect(client.getQueryData(customerKeys.activity(testBusiness.id, "c1"))).toBeDefined()
   })
 
   it("does not fetch when Customers is disabled", () => {
