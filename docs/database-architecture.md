@@ -21,7 +21,7 @@ Creating a business atomically adds its owner membership and disabled rows for e
 
 ## Module strategy
 
-Inventory is core application behavior, not a feature flag. It is deliberately excluded from the `optional_module` enum, so it cannot be disabled or accidentally omitted. `business_modules` represents only `sales`, `purchasing`, `expenses`, `customers`, `analytics`, `smart_insights`, and `team`. Each new business receives an explicit disabled row for every optional module, allowing later enable/disable changes without changing inventory access.
+Inventory is core application behavior, not a feature flag. It is deliberately excluded from the `optional_module` enum, so it cannot be disabled or accidentally omitted. `business_modules` represents only `sales`, `purchasing`, `expenses`, `customers`, `analytics`, `smart_insights`, `ai_analyst`, and `team`. Each new business receives an explicit disabled row for every optional module, allowing later enable/disable changes without changing inventory access. AI Analyst is distinct from deterministic Smart Inventory and deeper non-AI analytics, and defaults disabled for existing and new businesses.
 
 Adding another optional module requires a migration that adds an enum value and inserts its default row for existing businesses.
 
@@ -161,6 +161,16 @@ Estimated Days of Stock is available only with Sales enabled, 30 complete observ
 Phase 9A deliberately does not classify products as Fast/Normal/Slow, identify possible excess stock, recommend order quantities, perform supplier analysis, value inventory, or use predictions, AI, OpenRouter, the AI Analyst, or the Business Opportunity Advisor. Purchasing is not required and contributes no receipt/cost data to this initial contract. The existing bounded Sales, sale-item, product, and movement indexes support the snapshot query; new indexes should be added only if measured production-like query plans demonstrate a need.
 
 Two Phase 9 limitations remain intentional: a Sales transition timestamp can theoretically precede transaction visibility when a transition executes before business-local midnight but commits afterward; and the UI currently does not surface the backend's `RECORDED_INVENTORY_MOVEMENTS_OBSERVED` explanation, although its factual movement fields remain available in the RPC response. These are deferred to later production hardening and polish, respectively.
+
+## AI Analyst deterministic context foundation
+
+`get_ai_analyst_context(business_id, period)` is the versioned, business-scoped deterministic context boundary for the future AI Analyst server function. It requires an authenticated active owner or manager membership and an enabled `ai_analyst` module; employees, cashiers, inactive/non-members, cross-tenant callers, anonymous callers, and disabled-module callers are rejected in PostgreSQL. Phase 10A does not call an AI provider, store conversations, or expose a browser API key.
+
+The supported periods are `TODAY` (the current business-local date), `THIS_WEEK` (the Monday-to-Sunday week containing that date), `THIS_MONTH` (the full local calendar month containing that date), and `LAST_30_COMPLETED_DAYS` (the previous 30 business-local dates, excluding today's partial date). The RPC reuses the authoritative business overview and Finance summary contracts. Inventory attention is capped at 20 active out-of-stock/low-stock products, ordered by out-of-stock before low-stock and then stable product name/ID. Smart Inventory reuses the first stable page of `get_smart_inventory_snapshot`, capped at 15 active products. Existing Sales top products remain capped at five, and supported periods keep the daily trend at no more than 31 points. Aggregate facts remain catalog/period-wide even when detail lists are truncated.
+
+Context is module-aware: disabled Sales, Purchasing, Expenses/Finance, and Smart Inventory are represented as unavailable rather than fabricated zeroes. Finance appears only under its existing owner/manager plus Expenses-module boundary, preserves cost-coverage and nullable estimate semantics, and never upgrades estimates into accounting facts. Purchase Receipts remain purchasing activity, not Operating Expenses or COGS. PostgreSQL `numeric` remains canonical and monetary, quantity, rate, margin, and estimate values are transported as exact decimal strings.
+
+The initial context excludes Customers entirely, even when enabled. It also excludes customer identifiers and contact data, supplier contacts/notes, raw purchase lines/costs, expense descriptions/notes, product descriptions, transaction notes, and other arbitrary user-authored prose. Product names and SKUs are the minimum untrusted database text and must be treated as data by the future server prompt boundary. Phase 10 explains authorized deterministic facts only; provider integration, prompts, UI, persistence, recommendations, opportunity detection, forecasting, and external trends are not part of 10A. Opportunity synthesis remains a Phase 11 concern.
 
 ## Deliberately deferred
 
