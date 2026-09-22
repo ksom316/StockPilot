@@ -8,6 +8,7 @@ import { getFinanceDateRange, type FinancePeriod } from "@/features/finance/fina
 import { formatExpenseMoney } from "@/features/finance/finance-money"
 import { useFinancialSummary } from "@/features/finance/finance-queries"
 import { Button } from "@/components/ui/button"
+import { InventoryStatus, RecordedSalesTrend } from "@/pages/dashboard-visualizations"
 
 const financeRoles = ["owner", "manager"]
 const purchasingRoles = ["owner", "manager", "employee"]
@@ -59,6 +60,7 @@ export function DashboardPage() {
         {overview.data.inventory.activeProducts === 0 ? <div className="rounded-lg border border-dashed p-4"><p className="font-medium">No active products yet</p><p className="mt-1 text-sm text-muted-foreground">Add products to start tracking stock.</p><Button asChild className="mt-3" size="sm" variant="outline"><Link to="/inventory">Open inventory</Link></Button></div>
           : overview.data.inventory.lowStockProducts + overview.data.inventory.outOfStockProducts === 0 ? <p className="rounded-lg border bg-muted/35 p-4 text-sm" role="status">Stock is healthy: no active products are low or out of stock.</p>
             : <div className="rounded-lg border bg-muted/35 p-4 text-sm" role="status">{overview.data.inventory.outOfStockProducts > 0 && <p>{overview.data.inventory.outOfStockProducts} {plural(overview.data.inventory.outOfStockProducts, "active product is", "active products are")} out of stock.</p>}{overview.data.inventory.lowStockProducts > 0 && <p>{overview.data.inventory.lowStockProducts} {plural(overview.data.inventory.lowStockProducts, "active product is", "active products are")} low on stock.</p>}</div>}
+        <InventoryStatus inventory={overview.data.inventory} />
       </>}
     </section>
 
@@ -73,7 +75,10 @@ export function DashboardPage() {
           <Metric label="Average Recorded Sale" value={overview.data.sales.averageRecordedSale === null ? "—" : formatMoney(overview.data.sales.averageRecordedSale, currency)} help={overview.data.sales.averageRecordedSale === null ? "Unavailable when no sales were recorded" : undefined} />
           <Metric label="Units Sold During Period" value={formatQuantity(overview.data.sales.unitsSold)} />
         </dl>
-        {overview.data.sales.saleCount === 0 ? <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No Sales were recorded in this period.</p> : <TopProducts products={overview.data.sales.topProductsByUnitsSold} />}
+        {overview.data.sales.saleCount === 0 ? <><p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No Sales were recorded in this period.</p><RecordedSalesTrend points={overview.data.sales.dailyTrend} currency={currency} /></> : <>
+          <RecordedSalesTrend points={overview.data.sales.dailyTrend} currency={currency} />
+          <TopProducts products={overview.data.sales.topProductsByUnitsSold} />
+        </>}
         <Button asChild size="sm" variant="outline"><Link to="/sales/history">View Sales history</Link></Button>
       </>}
     </section>}
