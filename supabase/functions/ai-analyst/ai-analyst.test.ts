@@ -273,6 +273,21 @@ describe("OpenRouter provider", () => {
     expect(() => new OpenRouterProvider({}).assertConfigured()).toThrowError(AnalystError)
   })
 
+  it.each([
+    [Number("18000ms"), "non-numeric timeout"],
+    [Number.NaN, "NaN timeout"],
+    [999, "timeout below minimum"],
+    [60_001, "timeout above maximum"],
+  ])("rejects invalid timeout configuration: %s (%s)", (timeoutMs) => {
+    expect(() => new OpenRouterProvider({ apiKey: "key", model: "model", timeoutMs }).assertConfigured())
+      .toThrowError(new AnalystError(503, "AI_NOT_CONFIGURED", "AI Analyst timeout configuration is invalid."))
+  })
+
+  it("accepts a finite timeout within the configured range", () => {
+    expect(() => new OpenRouterProvider({ apiKey: "key", model: "model", timeoutMs: 18_000 }).assertConfigured())
+      .not.toThrow()
+  })
+
   it("parses structured JSON and token metadata", async () => {
     const fetcher = vi.fn(async () => new Response(JSON.stringify({
       choices: [{ message: { content: JSON.stringify({ answer: "ok", evidenceRefs: [], limitations: [] }) } }],

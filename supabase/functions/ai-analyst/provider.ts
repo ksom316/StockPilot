@@ -53,7 +53,7 @@ export class OpenRouterProvider implements AiProvider {
     if (!this.config.apiKey || !this.config.model || this.config.model.length > 200) {
       throw new AnalystError(503, "AI_NOT_CONFIGURED", "AI Analyst is not configured.")
     }
-    if (this.timeoutMs < 1_000 || this.timeoutMs > 60_000) {
+    if (!Number.isFinite(this.timeoutMs) || this.timeoutMs < 1_000 || this.timeoutMs > 60_000) {
       throw new AnalystError(503, "AI_NOT_CONFIGURED", "AI Analyst timeout configuration is invalid.")
     }
   }
