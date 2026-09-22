@@ -11,7 +11,7 @@ set search_path = ''
 as $$
 begin
   if new.enabled is distinct from old.enabled then
-    new.updated_at = now();
+    new.updated_at = statement_timestamp();
   else
     new.updated_at = old.updated_at;
   end if;

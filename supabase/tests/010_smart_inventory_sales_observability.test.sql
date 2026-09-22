@@ -33,11 +33,18 @@ where business_id = '10000000-0000-0000-0000-000000000911'
   and module = 'sales';
 alter table public.business_modules enable trigger business_modules_set_updated_at;
 
+select pg_sleep(0.01);
 update public.business_modules
 set enabled = true
 where business_id = '10000000-0000-0000-0000-000000000911'
   and module = 'sales';
 
+select ok(
+  (select updated_at > transaction_timestamp()
+   from public.business_modules
+   where business_id = '10000000-0000-0000-0000-000000000911' and module = 'sales'),
+  'Sales transition uses statement time rather than transaction start time'
+);
 select ok(
   (select updated_at > current_timestamp - interval '1 day'
    from public.business_modules
