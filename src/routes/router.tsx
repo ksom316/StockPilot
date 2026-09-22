@@ -47,6 +47,16 @@ export const routes = [
                 { path: "/sales/history", element: <SalesHistoryPage /> },
                 { path: "/sales/:saleId", element: <SaleDetailPage /> },
               ] },
+              { element: <RequireModule module="customers" />, children: [
+                { path: "/customers", lazy: async () => {
+                  const module = await import("@/pages/customers-page")
+                  return { Component: module.CustomersPage, HydrateFallback: RouteLoadingScreen }
+                } },
+                { element: <RequireModule module="customers" allowedRoles={["owner", "manager"]} />, children: [{ path: "/customers/:customerId", lazy: async () => {
+                  const module = await import("@/pages/customer-profile-page")
+                  return { Component: module.CustomerProfilePage, HydrateFallback: RouteLoadingScreen }
+                } }] },
+              ] },
               { element: <RequireModule module="purchasing" allowedRoles={["owner", "manager", "employee"]} />, children: [
                 { path: "/purchasing", lazy: async () => {
                   const module = await import("@/pages/purchasing-page")

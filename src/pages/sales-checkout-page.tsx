@@ -1,10 +1,14 @@
 import { PackagePlus, Plus, RotateCcw, Trash2 } from "lucide-react"
-import { useMemo, useRef, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 
 import { SalesSectionNav } from "@/components/sales/sales-section-nav"
 import { Button } from "@/components/ui/button"
+import { DialogShell } from "@/components/ui/dialog-shell"
 import { useBusiness } from "@/features/business/business-context"
+import { useCustomerLookup, useCustomerMutations } from "@/features/customers/customer-queries"
+import { findPossibleDuplicate } from "@/features/customers/customer-filters"
+import type { BasicCustomer } from "@/features/customers/customer-types"
 import { formatQuantity } from "@/features/inventory/inventory-format"
 import { parseDatabaseQuantity, parseQuantity } from "@/features/inventory/inventory-decimal"
 import { useInventoryProducts } from "@/features/inventory/inventory-queries"
@@ -27,7 +31,10 @@ interface FieldErrors {
 }
 
 export function SalesCheckoutPage() {
-  const { business } = useBusiness()
+  const { business, enabledModules } = useBusiness()
+  const customersEnabled = enabledModules.includes("customers")
+  const customerLookup = useCustomerLookup()
+  const customerMutations = useCustomerMutations()
   const products = useInventoryProducts()
   const recordSale = useRecordSale()
   const [search, setSearch] = useState("")
@@ -40,7 +47,37 @@ export function SalesCheckoutPage() {
   const [formError, setFormError] = useState("")
   const [statusMessage, setStatusMessage] = useState("")
   const [success, setSuccess] = useState<RecordedSale | null>(null)
+  const [customerId, setCustomerId] = useState("")
+  const [quickCreatedCustomer, setQuickCreatedCustomer] = useState<BasicCustomer | null>(null)
+  const [customerSearch, setCustomerSearch] = useState("")
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
+  const [quickName, setQuickName] = useState("")
+  const [quickPhone, setQuickPhone] = useState("")
+  const [quickEmail, setQuickEmail] = useState("")
+  const [quickError, setQuickError] = useState("")
+  const [quickStatus, setQuickStatus] = useState("")
   const submissionLock = useRef(false)
+  const customerScope = `${business?.id ?? ""}:${customersEnabled}`
+  const previousCustomerScope = useRef(customerScope)
+  useEffect(() => {
+    if (previousCustomerScope.current === customerScope) return
+    previousCustomerScope.current = customerScope
+    setCustomerId("")
+    setQuickCreatedCustomer(null)
+    setCustomerSearch("")
+    setQuickCreateOpen(false)
+  }, [customerScope])
+
+  const lookupCustomers = customerLookup.data ?? []
+  const customers = quickCreatedCustomer && !lookupCustomers.some((customer) => customer.id === quickCreatedCustomer.id)
+    ? [...lookupCustomers, quickCreatedCustomer]
+    : lookupCustomers
+  const selectedCustomer = customers.find((customer) => customer.id === customerId) ?? null
+  const matchingCustomers = customers.filter((customer) => {
+    const term = customerSearch.trim().toLocaleLowerCase()
+    return customer.isActive && (!term || [customer.name, customer.phone ?? "", customer.email ?? ""].some((value) => value.toLocaleLowerCase().includes(term)))
+  })
+  const quickDuplicates = findPossibleDuplicate(lookupCustomers, quickPhone, quickEmail)
 
   const activeProducts = useMemo(() => (products.data ?? []).filter((product) => product.isActive), [products.data])
   const query = search.trim().toLocaleLowerCase()
@@ -149,6 +186,7 @@ export function SalesCheckoutPage() {
       const recorded = await recordSale.mutateAsync({
         items: cart.map((line) => ({ product_id: line.productId, quantity: line.quantity, unit_price: line.unitPrice })),
         notes: notes.trim() || null,
+        customerId: customersEnabled ? customerId || null : null,
       })
       setSuccess(recorded)
       setCart([])
@@ -156,6 +194,7 @@ export function SalesCheckoutPage() {
       setSelectedProductId("")
       setQuantity("1")
       setUnitPrice("")
+      setCustomerId("")
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : "We couldn't record this sale. Your cart is still here; please try again.")
     } finally {
@@ -177,6 +216,8 @@ export function SalesCheckoutPage() {
       {success && <div aria-live="polite" className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/25 bg-primary/5 p-4" role="status"><div><p className="font-semibold">Sale recorded</p><p className="mt-1 text-sm">Reference: <span className="font-medium">{success.sale_reference}</span></p></div><div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link to={`/sales/${success.id}`}>View sale</Link></Button><Button onClick={() => setSuccess(null)} size="sm">New sale</Button></div></div>}
       {formError && <p aria-live="assertive" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{formError}</p>}
       {statusMessage && <p aria-live="polite" className="rounded-lg border border-border bg-card p-3 text-sm" role="status">{statusMessage}</p>}
+
+      {customersEnabled && <section aria-labelledby="sale-customer-heading" className="rounded-xl border border-border bg-card p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold" id="sale-customer-heading">Customer</h2><p className="mt-1 text-sm text-muted-foreground">Walk-in is selected by default. Customer fields are basic contact details only.</p></div><Button onClick={() => { setQuickCreateOpen(true); setQuickError(""); setQuickStatus("") }} size="sm" variant="outline">Add customer</Button></div><div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:items-end"><label className="space-y-1.5 text-sm"><span>Search customers</span><input autoComplete="off" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone or email" type="search" value={customerSearch} /></label><label className="space-y-1.5 text-sm"><span>Sale customer</span><select className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setCustomerId(event.target.value)} value={customerId}><option value="">Walk-in</option>{matchingCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.phone ? ` · ${customer.phone}` : ""}</option>)}</select></label></div>{customerLookup.isError && <p className="mt-2 text-sm text-destructive" role="alert">Customer search is unavailable. You can still record this as Walk-in.</p>}{selectedCustomer && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 p-3 text-sm"><span><strong>{selectedCustomer.name}</strong>{selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}{selectedCustomer.email ? ` · ${selectedCustomer.email}` : ""}</span><Button onClick={() => setCustomerId("")} size="sm" variant="outline">Use Walk-in</Button></div>}</section>}
 
       {products.isLoading && <div className="flex min-h-48 items-center justify-center rounded-xl border border-border bg-card" role="status"><span className="mr-3 size-5 animate-spin rounded-full border-2 border-border border-t-primary" />Loading products…</div>}
       {products.isError && !products.isLoading && <div className="rounded-xl border border-destructive/25 bg-card p-7 text-center" role="alert"><h2 className="text-lg font-semibold">Products unavailable</h2><p className="mt-2 text-sm text-muted-foreground">We couldn't load this business's products.</p><Button className="mt-4" onClick={retryProducts} variant="outline">Try again</Button></div>}
@@ -213,6 +254,8 @@ export function SalesCheckoutPage() {
           </section>
         </div>
       )}
+      {quickCreateOpen && <DialogShell description="Create a basic contact and select it for this sale. This does not record the sale." onClose={() => setQuickCreateOpen(false)} title="Quick-create customer"><form className="space-y-4" noValidate onSubmit={(event) => { event.preventDefault(); void (async () => { setQuickError(""); const name = quickName.trim(); if (!name) { setQuickError("Customer name is required."); return } if (name.length > 160 || quickPhone.trim().length > 50 || quickEmail.trim().length > 320) { setQuickError("Check the allowed field lengths and try again."); return } try { const phone = quickPhone.trim() || null; const email = quickEmail.trim() || null; const id = await customerMutations.create.mutateAsync({ name, phone, email, note: null }); setQuickCreatedCustomer({ id, name, phone, email, isActive: true }); setCustomerId(id); setCustomerSearch(""); setQuickCreateOpen(false); setQuickStatus(`${name} was created and selected. Review the sale, then record it when ready.`) } catch (cause) { setQuickError(cause instanceof Error ? cause.message : "We couldn't create this customer.") } })() }}><label className="block space-y-1.5 text-sm"><span>Name *</span><input autoComplete="name" autoFocus className="h-10 w-full rounded-md border border-border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-primary/20" maxLength={160} onChange={(event) => setQuickName(event.target.value)} required value={quickName} /></label><label className="block space-y-1.5 text-sm"><span>Phone (optional)</span><input autoComplete="tel" className="h-10 w-full rounded-md border border-border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-primary/20" maxLength={50} onChange={(event) => setQuickPhone(event.target.value)} value={quickPhone} /></label><label className="block space-y-1.5 text-sm"><span>Email (optional)</span><input autoComplete="email" className="h-10 w-full rounded-md border border-border bg-background px-3 outline-none focus-visible:ring-2 focus-visible:ring-primary/20" maxLength={320} onChange={(event) => setQuickEmail(event.target.value)} type="email" value={quickEmail} /></label>{quickDuplicates.length > 0 && <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" role="status">Possible match: {quickDuplicates.map((customer) => customer.name).join(", ")}. A separate record can still be created.</p>}{quickError && <p className="text-sm text-destructive" role="alert">{quickError}</p>}<div className="flex gap-2"><Button disabled={customerMutations.create.isPending} type="submit">{customerMutations.create.isPending ? "Creating…" : "Create and select"}</Button><Button onClick={() => setQuickCreateOpen(false)} type="button" variant="outline">Cancel</Button></div></form></DialogShell>}
+      {quickStatus && <p className="sr-only" role="status">{quickStatus}</p>}
     </section>
   )
 }

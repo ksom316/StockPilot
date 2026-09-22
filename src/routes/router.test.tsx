@@ -15,6 +15,10 @@ vi.mock("@/features/sales/sales-queries", () => ({
   useSalesHistory: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
   useSaleDetail: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
 }))
+vi.mock("@/features/customers/customer-queries", () => ({
+  useCustomerLookup: () => ({ data: [], isError: false }),
+  useCustomerMutations: () => ({ create: { mutateAsync: vi.fn(), isPending: false } }),
+}))
 vi.mock("@/features/purchasing/purchasing-queries", () => ({
   usePurchasingSuppliers: () => ({ data: [], isLoading: false, isError: false }),
   useRecordPurchase: () => ({ mutateAsync: vi.fn(), isPending: false }),

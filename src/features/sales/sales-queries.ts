@@ -5,6 +5,7 @@ import { inventoryKeys } from "@/features/inventory/inventory-queries"
 import { fetchSale, fetchSales, recordSale } from "@/features/sales/sales-service"
 import { SalesDataError, type RecordSaleInput } from "@/features/sales/sales-types"
 import { financeKeys } from "@/features/finance/finance-keys"
+import { customerKeys } from "@/features/customers/customer-queries"
 
 export const salesKeys = {
   list: (businessId: string) => ["sales", businessId, "list"] as const,
@@ -48,6 +49,7 @@ export function useRecordSale() {
         queryClient.invalidateQueries({ queryKey: inventoryKeys.products(business.id) }),
         queryClient.invalidateQueries({ queryKey: inventoryKeys.movements(business.id) }),
         queryClient.invalidateQueries({ queryKey: financeKeys.summaries(business.id) }),
+        ...(recorded.customerId ? [queryClient.invalidateQueries({ queryKey: customerKeys.activity(business.id, recorded.customerId) })] : []),
       ])
     },
     onError: async (error) => {

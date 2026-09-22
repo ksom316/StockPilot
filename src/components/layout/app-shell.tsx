@@ -74,6 +74,8 @@ export function AppShell() {
               {enabledModules.filter((module) => module !== "purchasing" || ["owner", "manager", "employee"].includes(role ?? "")).map((module) => (
                 module === "sales" ? (
                   <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/sales">{getModuleLabel(module)}</NavLink>
+                ) : module === "customers" ? (
+                  <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/customers">{getModuleLabel(module)}</NavLink>
                 ) : module === "purchasing" ? (
                   <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/purchasing">{getModuleLabel(module)}</NavLink>
                 ) : module === "expenses" ? (

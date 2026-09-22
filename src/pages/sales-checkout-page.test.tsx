@@ -9,12 +9,17 @@ import { createBusinessValue, testBusiness, TestBusinessProvider } from "@/test/
 
 const salesMocks = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const inventoryMocks = vi.hoisted(() => ({ data: [] as Product[], isLoading: false, isError: false, refetch: vi.fn() }))
+const customerMocks = vi.hoisted(() => ({ data: [] as Array<{ id: string; name: string; phone: string | null; email: string | null; isActive: boolean }>, create: { mutateAsync: vi.fn(), isPending: false } }))
 
 vi.mock("@/features/inventory/inventory-queries", () => ({
   useInventoryProducts: () => inventoryMocks,
 }))
 vi.mock("@/features/sales/sales-queries", () => ({
   useRecordSale: () => ({ mutateAsync: salesMocks.mutateAsync, isPending: false }),
+}))
+vi.mock("@/features/customers/customer-queries", () => ({
+  useCustomerLookup: () => ({ data: customerMocks.data, isError: false }),
+  useCustomerMutations: () => ({ create: customerMocks.create }),
 }))
 
 const products: Product[] = [
@@ -33,6 +38,8 @@ describe("sales checkout", () => {
     inventoryMocks.isLoading = false
     inventoryMocks.isError = false
     salesMocks.mutateAsync.mockReset()
+    customerMocks.data = []
+    customerMocks.create.mutateAsync.mockReset()
   })
 
   it("searches active products by SKU or name and validates stock and price", async () => {
@@ -66,12 +73,63 @@ describe("sales checkout", () => {
     expect(screen.getByRole("list", { name: /items in current sale/i }).querySelectorAll("li")).toHaveLength(1)
     expect(screen.getByText("Subtotal").parentElement).toHaveTextContent("US$28.50")
     await user.click(screen.getByRole("button", { name: /record sale/i }))
-    expect(salesMocks.mutateAsync).toHaveBeenCalledWith({ items: [{ product_id: "p1", quantity: "3", unit_price: "9.5" }], notes: null })
+    expect(salesMocks.mutateAsync).toHaveBeenCalledWith({ items: [{ product_id: "p1", quantity: "3", unit_price: "9.5" }], notes: null, customerId: null })
     expect(await screen.findByText("S-2026-0001")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "View sale" })).toHaveAttribute("href", "/sales/sale-1")
     await user.click(screen.getByRole("button", { name: "New sale" }))
     expect(screen.queryByText("S-2026-0001")).not.toBeInTheDocument()
     expect(screen.getByText("Your sale is empty")).toBeInTheDocument()
+  })
+
+  it("selects a basic customer at checkout and sends only its ID with the sale", async () => {
+    const user = userEvent.setup()
+    customerMocks.data = [{ id: "customer-1", name: "Avery Example", phone: "555-0100", email: "avery@example.test", isActive: true }]
+    salesMocks.mutateAsync.mockResolvedValue({ id: "sale-1", sale_reference: "S-2026-0001" })
+    render(<TestBusinessProvider value={createBusinessValue({ business: testBusiness, enabledModules: ["sales", "customers"] })}><MemoryRouter><SalesCheckoutPage /></MemoryRouter></TestBusinessProvider>)
+    expect(screen.getByRole("option", { name: "Walk-in" })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText("Sale customer"), "customer-1")
+    expect(screen.getByRole("button", { name: /use walk-in/i })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /use walk-in/i }))
+    expect(screen.getByLabelText("Sale customer")).toHaveValue("")
+    await user.selectOptions(screen.getByLabelText("Sale customer"), "customer-1")
+    await user.selectOptions(screen.getByLabelText("Product"), "p1")
+    await user.click(screen.getByRole("button", { name: /add to sale/i }))
+    await user.click(screen.getByRole("button", { name: /record sale/i }))
+    expect(salesMocks.mutateAsync).toHaveBeenCalledWith({ items: [{ product_id: "p1", quantity: "1", unit_price: "10.25" }], notes: null, customerId: "customer-1" })
+  })
+
+  it.each(["owner", "manager", "employee", "cashier"] as const)("quick-creates a minimal customer as %s without automatically recording the sale", async (role) => {
+    const user = userEvent.setup()
+    customerMocks.create.mutateAsync.mockResolvedValue("customer-created")
+    render(<TestBusinessProvider value={createBusinessValue({ business: testBusiness, role, enabledModules: ["sales", "customers"] })}><MemoryRouter><SalesCheckoutPage /></MemoryRouter></TestBusinessProvider>)
+    expect(screen.queryByLabelText(/private note/i)).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText("Product"), "p1")
+    await user.click(screen.getByRole("button", { name: /add to sale/i }))
+    await user.click(screen.getByRole("button", { name: /add customer/i }))
+    await user.type(screen.getByLabelText("Name *"), "Morgan Buyer")
+    await user.click(screen.getByRole("button", { name: /create and select/i }))
+    expect(customerMocks.create.mutateAsync).toHaveBeenCalledWith({ name: "Morgan Buyer", phone: null, email: null, note: null })
+    expect(await screen.findByRole("button", { name: /use walk-in/i })).toBeInTheDocument()
+    expect(screen.getByRole("list", { name: /items in current sale/i }).querySelectorAll("li")).toHaveLength(1)
+    expect(salesMocks.mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it("hides customer controls when Customers is disabled", () => {
+    renderCheckout()
+    expect(screen.queryByRole("heading", { name: "Customer" })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Sale customer")).not.toBeInTheDocument()
+  })
+
+  it.each(["555-0100", "avery@example.test"])("filters active checkout customers by phone or email (%s)", async (term) => {
+    const user = userEvent.setup()
+    customerMocks.data = [
+      { id: "customer-1", name: "Avery Example", phone: "555-0100", email: "avery@example.test", isActive: true },
+      { id: "customer-inactive", name: "Inactive", phone: "555-9999", email: "old@example.test", isActive: false },
+    ]
+    render(<TestBusinessProvider value={createBusinessValue({ business: testBusiness, enabledModules: ["sales", "customers"] })}><MemoryRouter><SalesCheckoutPage /></MemoryRouter></TestBusinessProvider>)
+    await user.type(screen.getByRole("searchbox", { name: /search customers/i }), term)
+    expect(screen.getByRole("option", { name: /Avery Example/ })).toBeInTheDocument()
+    expect(screen.queryByRole("option", { name: /Inactive/ })).not.toBeInTheDocument()
   })
 
   it("preserves the cart when recording fails and can remove an item", async () => {

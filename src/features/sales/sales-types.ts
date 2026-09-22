@@ -7,17 +7,20 @@ export interface SaleItemInput {
 export interface RecordSaleInput {
   items: SaleItemInput[]
   notes: string | null
+  customerId?: string | null
 }
 
 export interface RecordedSale {
   id: string
   sale_reference: string
+  customerId?: string | null
 }
 
 export interface SaleSummary {
   id: string
   businessId: string
   saleReference: string
+  customerNameSnapshot: string | null
   soldAt: string
   subtotal: string
   total: string
