@@ -47,7 +47,7 @@ describe("ModuleSettingsPage", () => {
       const moduleRow = toggle.closest("li")
       expect(toggle).toHaveAttribute("aria-checked", "false")
       expect(within(moduleRow!).getByText(module.description)).toBeInTheDocument()
-      expect(within(moduleRow!).getByText(module.key === "sales" ? "Disabled · Available" : "Disabled · Coming soon")).toBeInTheDocument()
+      expect(within(moduleRow!).getByText(module.key === "sales" || module.key === "expenses" ? "Disabled · Available" : "Disabled · Coming soon")).toBeInTheDocument()
     }
     expect(within(optional).getAllByRole("switch")).toHaveLength(7)
   })

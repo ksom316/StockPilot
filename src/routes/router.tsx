@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom"
 
 import { AppShell } from "@/components/layout/app-shell"
-import { OnboardingOnly, PublicOnly, RequireAuth, RequireBusiness, RequireModule, RouteLoadingScreen } from "@/features/auth/route-guards"
+import { OnboardingOnly, PublicOnly, RequireAuth, RequireBusiness, RequireFinance, RequireModule, RouteLoadingScreen } from "@/features/auth/route-guards"
 import { DashboardPage } from "@/pages/dashboard-page"
 import { HomePage } from "@/pages/home-page"
 import { InventoryPage } from "@/pages/inventory-page"
@@ -54,6 +54,9 @@ export const routes = [
                 { path: "/purchasing/suppliers", lazy: async () => { const module = await import("@/pages/purchasing-suppliers-page"); return { Component: module.PurchasingSuppliersPage, HydrateFallback: RouteLoadingScreen } } },
                 { path: "/purchasing/history", lazy: async () => { const module = await import("@/pages/purchase-history-page"); return { Component: module.PurchaseHistoryPage, HydrateFallback: RouteLoadingScreen } } },
                 { path: "/purchasing/:purchaseId", lazy: async () => { const module = await import("@/pages/purchase-detail-page"); return { Component: module.PurchaseDetailPage, HydrateFallback: RouteLoadingScreen } } },
+              ] },
+              { element: <RequireFinance />, children: [
+                { path: "/finance/expenses", lazy: async () => { const module = await import("@/pages/finance-expenses-page"); return { Component: module.FinanceExpensesPage, HydrateFallback: RouteLoadingScreen } } },
               ] },
             ],
           },

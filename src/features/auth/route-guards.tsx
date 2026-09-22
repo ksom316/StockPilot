@@ -83,6 +83,10 @@ export function RequireModule({ module, allowedRoles }: { module: OptionalModule
   return <Outlet />
 }
 
+export function RequireFinance() {
+  return <RequireModule module="expenses" allowedRoles={["owner", "manager"]} />
+}
+
 export function OnboardingOnly() {
   const { business, isLoading, error } = useBusiness()
 
