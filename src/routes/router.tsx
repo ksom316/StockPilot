@@ -1,11 +1,12 @@
 import { createBrowserRouter } from "react-router-dom"
 
 import { AppShell } from "@/components/layout/app-shell"
-import { PublicOnly, RequireAuth } from "@/features/auth/route-guards"
+import { OnboardingOnly, PublicOnly, RequireAuth, RequireBusiness } from "@/features/auth/route-guards"
 import { DashboardPage } from "@/pages/dashboard-page"
 import { HomePage } from "@/pages/home-page"
 import { LoginPage } from "@/pages/login-page"
 import { NotFoundPage } from "@/pages/not-found-page"
+import { OnboardingPage } from "@/pages/onboarding-page"
 import { SignupPage } from "@/pages/signup-page"
 
 export const routes = [
@@ -22,7 +23,16 @@ export const routes = [
       },
       {
         element: <RequireAuth />,
-        children: [{ path: "/dashboard", element: <DashboardPage /> }],
+        children: [
+          {
+            element: <OnboardingOnly />,
+            children: [{ path: "/onboarding", element: <OnboardingPage /> }],
+          },
+          {
+            element: <RequireBusiness />,
+            children: [{ path: "/dashboard", element: <DashboardPage /> }],
+          },
+        ],
       },
       { path: "*", element: <NotFoundPage /> },
     ],

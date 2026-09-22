@@ -4,9 +4,12 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/auth-context"
+import { useBusiness } from "@/features/business/business-context"
+import { getModuleLabel } from "@/features/business/modules"
 
 export function AppShell() {
   const { session, signOut } = useAuth()
+  const { business, enabledModules } = useBusiness()
   const navigate = useNavigate()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState("")
@@ -34,7 +37,7 @@ export function AppShell() {
             </span>
             <span className="hidden sm:inline">StockPilot</span>
           </Link>
-          <nav aria-label="Primary navigation" className="flex items-center gap-3 text-sm">
+          <nav aria-label="Account navigation" className="flex items-center gap-3 text-sm">
             {!session && (
               <NavLink
                 className={({ isActive }) => isActive ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}
@@ -45,10 +48,13 @@ export function AppShell() {
               </NavLink>
             )}
             {session ? (
-              <Button disabled={isSigningOut} onClick={handleSignOut} size="sm" variant="outline">
-                <LogOut aria-hidden="true" className="size-4" />
-                <span className="ml-2">{isSigningOut ? "Signing out…" : "Sign out"}</span>
-              </Button>
+              <>
+                {business && <span className="hidden max-w-48 truncate text-muted-foreground md:inline">{business.name}</span>}
+                <Button disabled={isSigningOut} onClick={handleSignOut} size="sm" variant="outline">
+                  <LogOut aria-hidden="true" className="size-4" />
+                  <span className="ml-2">{isSigningOut ? "Signing out…" : "Sign out"}</span>
+                </Button>
+              </>
             ) : (
               <>
                 <Link className="text-muted-foreground hover:text-foreground" to="/login">Sign in</Link>
@@ -58,6 +64,17 @@ export function AppShell() {
           </nav>
         </div>
         {signOutError && <p className="mx-auto max-w-6xl px-4 pb-3 text-right text-sm text-destructive" role="alert">{signOutError}</p>}
+        {session && business && (
+          <nav aria-label="Workspace navigation" className="border-t border-border">
+            <div className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-3 text-sm sm:px-6">
+              <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/dashboard">Dashboard</NavLink>
+              <span aria-disabled="true" className="shrink-0 text-foreground" title="Inventory screens are coming soon">Inventory</span>
+              {enabledModules.map((module) => (
+                <span aria-disabled="true" className="shrink-0 text-muted-foreground" key={module} title="Coming soon">{getModuleLabel(module)}</span>
+              ))}
+            </div>
+          </nav>
+        )}
       </header>
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
         <Outlet />
