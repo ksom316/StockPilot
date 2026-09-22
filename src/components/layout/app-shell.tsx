@@ -9,7 +9,7 @@ import { getModuleLabel } from "@/features/business/modules"
 
 export function AppShell() {
   const { session, signOut } = useAuth()
-  const { business, enabledModules } = useBusiness()
+  const { business, enabledModules, role } = useBusiness()
   const navigate = useNavigate()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState("")
@@ -71,9 +71,11 @@ export function AppShell() {
               <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/dashboard">Dashboard</NavLink>
               <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/inventory">Inventory</NavLink>
               <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/inventory/movements">Movement history</NavLink>
-              {enabledModules.map((module) => (
+              {enabledModules.filter((module) => module !== "purchasing" || ["owner", "manager", "employee"].includes(role ?? "")).map((module) => (
                 module === "sales" ? (
                   <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/sales">{getModuleLabel(module)}</NavLink>
+                ) : module === "purchasing" ? (
+                  <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/purchasing">{getModuleLabel(module)}</NavLink>
                 ) : (
                   <span aria-disabled="true" className="flex shrink-0 items-center gap-1.5 text-muted-foreground" key={module} title={`${getModuleLabel(module)} is coming soon`}>
                     {getModuleLabel(module)}

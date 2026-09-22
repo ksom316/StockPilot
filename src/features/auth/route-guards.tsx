@@ -73,11 +73,12 @@ export function RequireBusiness() {
   return <Outlet />
 }
 
-export function RequireModule({ module }: { module: OptionalModule }) {
-  const { enabledModules, isLoading } = useBusiness()
+export function RequireModule({ module, allowedRoles }: { module: OptionalModule; allowedRoles?: Array<"owner" | "manager" | "employee" | "cashier"> }) {
+  const { enabledModules, isLoading, role } = useBusiness()
 
   if (isLoading) return <RouteLoadingScreen message="Checking available modules…" />
   if (!enabledModules.includes(module)) return <Navigate replace to="/dashboard" />
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) return <Navigate replace to="/dashboard" />
 
   return <Outlet />
 }

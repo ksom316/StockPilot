@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react"
+import { cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { describe, expect, it, vi } from "vitest"
@@ -14,6 +14,10 @@ vi.mock("@/features/sales/sales-queries", () => ({
   useRecordSale: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSalesHistory: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
   useSaleDetail: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
+}))
+vi.mock("@/features/purchasing/purchasing-queries", () => ({
+  usePurchasingSuppliers: () => ({ data: [], isLoading: false, isError: false }),
+  useRecordPurchase: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 import {
   createAuthValue,
@@ -113,6 +117,25 @@ describe("authentication routes", () => {
     expect(navigation).toHaveTextContent("Sales")
     expect(navigation).not.toHaveTextContent("Purchasing")
     expect(within(navigation).getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/sales")
+  })
+
+  it.each(["owner", "manager", "employee"] as const)("shows Purchasing and allows %s to receive stock when enabled", async (role) => {
+    renderRoute("/purchasing", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["purchasing"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /receive stock/i })).toBeInTheDocument()
+    const navigation = screen.getByRole("navigation", { name: /workspace navigation/i })
+    expect(within(navigation).getByRole("link", { name: "Purchasing" })).toHaveAttribute("href", "/purchasing")
+    expect(navigation).not.toHaveTextContent("Soon")
+  })
+
+  it("hides Purchasing when disabled and denies cashier workspace access", async () => {
+    renderRoute("/dashboard", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+    expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).queryByRole("link", { name: "Purchasing" })).not.toBeInTheDocument()
+    cleanup()
+    renderRoute("/purchasing", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role: "cashier" }, role: "cashier", enabledModules: ["purchasing"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+    const navigation = screen.getByRole("navigation", { name: /workspace navigation/i })
+    expect(within(navigation).queryByRole("link", { name: "Purchasing" })).not.toBeInTheDocument()
   })
 
   it.each(["owner", "manager", "employee", "cashier"] as const)("allows %s to reach Sales when enabled", async (role) => {

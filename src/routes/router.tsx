@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom"
 
 import { AppShell } from "@/components/layout/app-shell"
-import { OnboardingOnly, PublicOnly, RequireAuth, RequireBusiness, RequireModule } from "@/features/auth/route-guards"
+import { OnboardingOnly, PublicOnly, RequireAuth, RequireBusiness, RequireModule, RouteLoadingScreen } from "@/features/auth/route-guards"
 import { DashboardPage } from "@/pages/dashboard-page"
 import { HomePage } from "@/pages/home-page"
 import { InventoryPage } from "@/pages/inventory-page"
@@ -45,6 +45,12 @@ export const routes = [
                 { path: "/sales", element: <SalesCheckoutPage /> },
                 { path: "/sales/history", element: <SalesHistoryPage /> },
                 { path: "/sales/:saleId", element: <SaleDetailPage /> },
+              ] },
+              { element: <RequireModule module="purchasing" allowedRoles={["owner", "manager", "employee"]} />, children: [
+                { path: "/purchasing", lazy: async () => {
+                  const module = await import("@/pages/purchasing-page")
+                  return { Component: module.PurchasingPage, HydrateFallback: RouteLoadingScreen }
+                } },
               ] },
             ],
           },
