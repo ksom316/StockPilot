@@ -4,12 +4,12 @@ import type { PropsWithChildren } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createBusinessValue, testBusiness, TestBusinessProvider } from "@/test/auth-test-utils"
 import { financeKeys } from "@/features/finance/finance-keys"
-import { useFinancialSummary } from "@/features/finance/finance-queries"
+import { useExpenseMutations, useFinancialSummary } from "@/features/finance/finance-queries"
 
-const service = vi.hoisted(() => ({ fetchFinancialSummary: vi.fn() }))
+const service = vi.hoisted(() => ({ fetchFinancialSummary: vi.fn(), createExpense: vi.fn(), updateExpense: vi.fn(), voidExpense: vi.fn(), createExpenseCategory: vi.fn(), updateExpenseCategory: vi.fn() }))
 vi.mock("@/features/finance/finance-service", () => ({
   fetchFinancialSummary: service.fetchFinancialSummary,
-  createExpense: vi.fn(), createExpenseCategory: vi.fn(), fetchExpenseAudit: vi.fn(), fetchExpenseCategories: vi.fn(), fetchExpenses: vi.fn(), updateExpense: vi.fn(), updateExpenseCategory: vi.fn(), voidExpense: vi.fn(),
+  createExpense: service.createExpense, createExpenseCategory: service.createExpenseCategory, fetchExpenseAudit: vi.fn(), fetchExpenseCategories: vi.fn(), fetchExpenses: vi.fn(), updateExpense: service.updateExpense, updateExpenseCategory: service.updateExpenseCategory, voidExpense: service.voidExpense,
 }))
 
 describe("financial summary query", () => {
@@ -35,5 +35,19 @@ describe("financial summary query", () => {
     currentBusiness = { ...testBusiness, id: "business-2" }
     rerender()
     await waitFor(() => expect(service.fetchFinancialSummary).toHaveBeenCalledWith("business-2", range.startDate, range.endDate))
+  })
+
+  it("invalidates only this business's summary after expense writes, not category-only writes", async () => {
+    service.createExpense.mockResolvedValue({ id: "expense-1" })
+    service.createExpenseCategory.mockResolvedValue(undefined)
+    const invalidate = vi.spyOn(client, "invalidateQueries").mockResolvedValue()
+    const { result } = renderHook(() => useExpenseMutations(), { wrapper })
+    await result.current.create.mutateAsync({ categoryId: "category-1", amount: "1.0000", expenseDate: range.startDate, description: "Test", notes: null })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: financeKeys.summaries(testBusiness.id) })
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: financeKeys.summaries("another-business") })
+    invalidate.mockClear()
+    await result.current.createCategory.mutateAsync("Custom")
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: financeKeys.summaries(testBusiness.id) })
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ["finance"] })
   })
 })

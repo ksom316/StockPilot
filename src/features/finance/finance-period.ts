@@ -3,10 +3,14 @@ import { isValidIsoDate } from "@/features/finance/finance-money"
 export type FinancePeriod = "today" | "week" | "month" | "custom"
 export interface FinanceDateRange { startDate: string; endDate: string }
 
-export function getDateInTimezone(date: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date)
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${values.year}-${values.month}-${values.day}`
+export function getDateInTimezone(date: Date, timezone: string): string | null {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date)
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+    return `${values.year}-${values.month}-${values.day}`
+  } catch {
+    return null
+  }
 }
 
 export function getFinanceDateRange(period: FinancePeriod, timezone: string, now = new Date(), customStart = "", customEnd = ""): FinanceDateRange | null {
@@ -15,6 +19,7 @@ export function getFinanceDateRange(period: FinancePeriod, timezone: string, now
     return { startDate: customStart, endDate: customEnd }
   }
   const today = getDateInTimezone(now, timezone)
+  if (!today) return null
   if (period === "today") return { startDate: today, endDate: today }
   const [year, month, day] = today.split("-").map(Number)
   if (period === "month") {

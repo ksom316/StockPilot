@@ -117,6 +117,8 @@ The summary returns item coverage counts and a completeness flag. Any unknown co
 
 Each business receives eight modest system expense categories plus tenant-scoped custom categories. System categories are stable; custom categories can be renamed or deactivated but not hard-deleted through browser grants. Expenses snapshot the category name for history. Authorized clients create, update, and void expenses only through `create_expense`, `update_expense`, and `void_expense`. Voiding requires a reason, preserves the row, and excludes it from summaries. Each mutation appends an unforgeable `created`, `updated`, or `voided` before/after record to `expense_audit`; clients cannot directly mutate expenses or audit rows.
 
+The initial Expenses screen loads the current business's expense rows and filters them client-side; pagination/server-side filtering is deferred until expense volume warrants it. Finance access remains independent of Sales and Purchasing: when either optional module is disabled, Finance continues to report its own available data and the RPC hides Purchase Receipts when Purchasing is disabled.
+
 All money and derived values use PostgreSQL `numeric`, with stored money at `numeric(19,4)`, quantities at `numeric(18,3)`, four-decimal multiplication rounding, and six-decimal margin rounding. API consumers must preserve numeric values as decimal strings rather than JavaScript floating-point numbers.
 
 ## Deliberately deferred

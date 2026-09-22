@@ -19,8 +19,8 @@ const completeSummary = {
 describe("FinanceOverviewPage", () => {
   const query = vi.mocked(useFinancialSummary)
   beforeEach(() => query.mockReset())
-  function renderPage() {
-    return render(<MemoryRouter><TestBusinessProvider value={createBusinessValue({ business: testBusiness, role: "owner", enabledModules: ["expenses"] })}><FinanceOverviewPage /></TestBusinessProvider></MemoryRouter>)
+  function renderPage(business = testBusiness) {
+    return render(<MemoryRouter><TestBusinessProvider value={createBusinessValue({ business, role: "owner", enabledModules: ["expenses"] })}><FinanceOverviewPage /></TestBusinessProvider></MemoryRouter>)
   }
 
   it("displays exact RPC values, known zero cost, separate receipts, and section navigation", () => {
@@ -77,5 +77,12 @@ describe("FinanceOverviewPage", () => {
     rerender(<MemoryRouter><TestBusinessProvider value={createBusinessValue({ business: testBusiness, role: "owner", enabledModules: ["expenses"] })}><FinanceOverviewPage /></TestBusinessProvider></MemoryRouter>)
     expect(screen.getByRole("alert")).toHaveTextContent(/financial summary unavailable/i)
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument()
+  })
+
+  it("fails safely and explains an invalid workspace timezone", () => {
+    query.mockReturnValue({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() } as never)
+    renderPage({ ...testBusiness, timezone: "not/a-timezone" })
+    expect(screen.getByRole("alert")).toHaveTextContent(/workspace timezone is invalid/i)
+    expect(query).toHaveBeenCalledWith(null)
   })
 })

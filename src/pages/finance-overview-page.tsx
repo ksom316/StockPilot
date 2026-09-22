@@ -31,6 +31,7 @@ export function FinanceOverviewPage() {
       {range && <p className="text-sm text-muted-foreground sm:col-span-3">Business dates: {range.startDate} – {range.endDate}</p>}
     </section>
     {period === "custom" && !range && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Choose valid start and end dates. The start date must be on or before the end date.</p>}
+    {period !== "custom" && !range && <p className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">The workspace timezone is invalid, so this date range can’t be loaded. Contact your workspace owner to correct it.</p>}
 
     {summary.isLoading && <div className="rounded-xl border bg-card p-10 text-center text-muted-foreground" role="status">Loading financial summary…</div>}
     {summary.isError && <div className="rounded-xl border border-destructive/25 bg-card p-8 text-center" role="alert"><h2 className="font-semibold">Financial summary unavailable</h2><p className="mt-2 text-sm text-muted-foreground">We couldn’t load this period’s summary. Your saved records are unchanged.</p><Button className="mt-4" onClick={() => void summary.refetch()} variant="outline">Try again</Button></div>}

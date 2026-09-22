@@ -212,5 +212,11 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 select is((select count(*) from public.expenses), 4::bigint, 're-enabling Finance restores historical expense access');
 reset role;
 
+update public.business_modules set enabled = false where business_id = '10000000-0000-0000-0000-000000000301' and module = 'sales';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000301","role":"authenticated"}', true);
+select is((select recorded_sales from public.get_financial_summary('10000000-0000-0000-0000-000000000301', '2026-01-11', '2026-01-11')), 30.0000::numeric, 'Finance remains available when Sales is disabled');
+reset role;
+
 select * from finish();
 rollback;
