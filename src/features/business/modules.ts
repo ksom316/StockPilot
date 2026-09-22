@@ -4,7 +4,7 @@ export const optionalModules = [
   { key: "expenses", label: "Expenses & Profitability", description: "Manage sensitive operating expenses and estimated financial performance." },
   { key: "customers", label: "Customers", description: "Keep a business-scoped customer directory." },
   { key: "analytics", label: "Analytics", description: "Explore deeper business performance and trends." },
-  { key: "smart_insights", label: "Smart Insights", description: "Receive intelligent inventory and business recommendations." },
+  { key: "smart_insights", label: "Smart Inventory", description: "Review deterministic inventory attention and demand facts." },
   { key: "team", label: "Team", description: "Add employees and manage permissions." },
 ] as const
 
