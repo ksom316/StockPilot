@@ -72,11 +72,15 @@ export function AppShell() {
               <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/inventory">Inventory</NavLink>
               <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/inventory/movements">Movement history</NavLink>
               {enabledModules.map((module) => (
-                <span aria-disabled="true" className="flex shrink-0 items-center gap-1.5 text-muted-foreground" key={module} title={`${getModuleLabel(module)} is coming soon`}>
-                  {getModuleLabel(module)}
-                  <span aria-hidden="true" className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Soon</span>
-                  <span className="sr-only">, coming soon</span>
-                </span>
+                module === "sales" ? (
+                  <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/sales">{getModuleLabel(module)}</NavLink>
+                ) : (
+                  <span aria-disabled="true" className="flex shrink-0 items-center gap-1.5 text-muted-foreground" key={module} title={`${getModuleLabel(module)} is coming soon`}>
+                    {getModuleLabel(module)}
+                    <span aria-hidden="true" className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Soon</span>
+                    <span className="sr-only">, coming soon</span>
+                  </span>
+                )
               ))}
             </div>
           </nav>

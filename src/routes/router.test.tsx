@@ -10,6 +10,9 @@ vi.mock("@/features/inventory/inventory-queries", () => ({
   useInventoryMovements: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
   useInventoryProducts: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
 }))
+vi.mock("@/features/sales/sales-queries", () => ({
+  useRecordSale: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
 import {
   createAuthValue,
   createBusinessValue,
@@ -107,6 +110,20 @@ describe("authentication routes", () => {
     expect(navigation).toHaveTextContent("Inventory")
     expect(navigation).toHaveTextContent("Sales")
     expect(navigation).not.toHaveTextContent("Purchasing")
+    expect(within(navigation).getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/sales")
+  })
+
+  it.each(["owner", "manager", "employee", "cashier"] as const)("allows %s to reach Sales when enabled", async (role) => {
+    renderRoute("/sales", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["sales"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: "New sale" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /stock in|stock out|adjust stock/i })).not.toBeInTheDocument()
+  })
+
+  it("redirects direct Sales access when the module is disabled", async () => {
+    renderRoute("/sales", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+    const navigation = screen.getByRole("navigation", { name: /workspace navigation/i })
+    expect(within(navigation).queryByRole("link", { name: "Sales" })).not.toBeInTheDocument()
   })
 
   it("keeps Inventory available with no optional modules enabled", async () => {

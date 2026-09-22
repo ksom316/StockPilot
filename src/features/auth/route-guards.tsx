@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom"
 
 import { useAuth } from "@/features/auth/auth-context"
 import { useBusiness } from "@/features/business/business-context"
+import type { OptionalModule } from "@/features/business/modules"
 
 export function RouteLoadingScreen({ message = "Loading your workspace…" }: { message?: string }) {
   return (
@@ -68,6 +69,15 @@ export function RequireBusiness() {
   if (isLoading) return <RouteLoadingScreen />
   if (error) return <WorkspaceError />
   if (!business) return <Navigate replace to="/onboarding" />
+
+  return <Outlet />
+}
+
+export function RequireModule({ module }: { module: OptionalModule }) {
+  const { enabledModules, isLoading } = useBusiness()
+
+  if (isLoading) return <RouteLoadingScreen message="Checking available modules…" />
+  if (!enabledModules.includes(module)) return <Navigate replace to="/dashboard" />
 
   return <Outlet />
 }

@@ -116,7 +116,7 @@ describe("module state integration", () => {
     await user.click(screen.getByRole("switch", { name: "Sales module" }))
     const navigation = screen.getByRole("navigation", { name: /workspace navigation/i })
     expect(within(navigation).getByText("Sales")).toBeInTheDocument()
-    expect(within(navigation).getByText("Soon")).toBeInTheDocument()
+    expect(within(navigation).getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/sales")
     await user.click(screen.getByRole("link", { name: "Dashboard" }))
     expect(screen.getByRole("list")).toHaveTextContent("Sales")
     await user.click(screen.getByRole("link", { name: "Modules" }))
