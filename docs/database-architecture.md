@@ -4,15 +4,17 @@
 
 `profiles` is a one-to-one extension of `auth.users`. A profile can belong to many businesses through `business_members`; each business has one immutable owner reference until a reviewed ownership-transfer workflow is introduced.
 
-Every operational row is tenant-scoped by `business_id`. Composite foreign keys ensure that products, inventory movements, sales, and sale items cannot cross business boundaries. Tenant isolation is enforced through RLS policies and narrow RPC mutation boundaries.
+Every operational row is tenant-scoped by `business_id`. Composite foreign keys ensure that products, inventory movements, sales, sale items, suppliers, purchases, and purchase items cannot cross business boundaries. Tenant isolation is enforced through RLS policies and narrow RPC mutation boundaries.
 
 ```text
 auth.users ── profiles ──< business_members >── businesses
                                       │              ├── business_modules
                                       │              ├── categories
                                       │              ├── products ──< inventory_movements
-                                      │              └── sales ──< sale_items >── products
-                                      └── actor of inventory_movements and sales
+                                      │              ├── sales ──< sale_items >── products
+                                      │              ├── suppliers ──< purchases
+                                      │              └── purchases ──< purchase_items >── products
+                                      └── actor of inventory movements, sales, and purchases
 ```
 
 Creating a business atomically adds its owner membership and disabled rows for every optional module. Owner, manager, employee, and cashier roles are represented, but invitation and role-management workflows are intentionally deferred.
@@ -33,7 +35,7 @@ Adding another optional module requires a migration that adds an enum value and 
 
 Callers pass a positive magnitude for every movement except `adjustment`, which accepts a signed delta. `record_inventory_movement` locks the product row with `FOR UPDATE`, calculates and validates the new balance, updates the product, and inserts the movement. A failure rolls back the whole statement. Negative inventory is rejected by both the function and table constraints.
 
-Manual inventory uses `source_type = 'manual'` and does not depend on any optional module. Sales uses its own atomic `record_sale` boundary because it must write immutable sale snapshots, deduct stock, and append the linked movement as one transaction. Do not split those operations across RPCs. Future Purchasing may use a similarly scoped transaction boundary.
+Manual inventory uses `source_type = 'manual'` and does not depend on any optional module. Sales and Purchasing use dedicated atomic transaction boundaries because each must write immutable transaction snapshots, update stock, and append linked movements in one transaction. Do not split those operations across RPCs. Purchasing movements use `source_type = 'purchasing'` and the purchase UUID as `source_reference`.
 
 ## Security boundary
 
@@ -50,6 +52,8 @@ The role permissions are:
 | Products | Read and manage | Read and manage | Read and manage | Read |
 | Inventory history | Read and create through RPC | Read and create through RPC | Read and create through RPC | Read |
 | Sales | Read and record through RPC | Read and record through RPC | Read and record through RPC | Read and record through RPC |
+| Purchases | Read and record through RPC when enabled | Read and record through RPC when enabled | Read and record through RPC when enabled | No access |
+| Suppliers | Read and manage when enabled | Read and manage when enabled | Read when enabled | No access |
 
 Profiles are private to their user. Authenticated users can select their own profile and update only `display_name`; Auth credentials remain in `auth.users` and are never exposed through `profiles`.
 
@@ -77,11 +81,27 @@ All active owner, manager, employee, and cashier members can read and record sal
 
 Current Sales limitations are deliberate: there is no customer, payment, tax, discount, printable receipt, refund, cancellation, or editing workflow. Recorded sales are immutable. Reversal and cancellation require a future audited workflow that restores stock rather than deleting history. History filtering is currently client-side over the loaded business history; pagination/server-side filtering may be needed as sales volume grows.
 
+Sales currently has no persisted request-id idempotency protection. Adding it is a later hardening opportunity; Purchasing does not modify the existing Sales implementation.
+
+## Purchasing transaction strategy
+
+Purchasing represents completed stock receipts, not draft purchase orders. `purchases` stores immutable business-scoped headers with sequential `PUR-000001` references, while `purchase_items` stores immutable product-name, SKU, quantity, and transaction-cost snapshots. There is no ordered, approved, partially received, cancelled, payable, or paid lifecycle in this phase.
+
+A supplier is optional. When selected, it must be an active supplier in the receipt's business and its name is snapshotted on the purchase. Later supplier or product edits and deactivation do not rewrite receipt history. Suppliers are normally deactivated; browser roles have no hard-delete capability.
+
+`record_purchase(jsonb, uuid, uuid, text)` is the only purchase mutation boundary available to authenticated clients. It requires owner, manager, or employee membership and an enabled Purchasing module, rejects cashiers, validates every product and optional supplier against one business, rejects duplicate products, and locks products in UUID order. It creates the immutable header and items, increases stock, updates each product's current cost, and appends one linked `stock_in` movement per item in one database transaction. Any failure rolls back all of those effects. Direct purchase, purchase-item, ledger, and stock-balance writes remain unavailable to clients.
+
+The caller supplies a request UUID. `(business_id, request_id)` is unique, and a business/request-scoped transaction advisory lock serializes concurrent retries. Repeating a completed request returns the existing purchase without adding stock, items, or movements again. The same UUID can be used independently by different businesses.
+
+Purchasing reads and supplier management require both the approved role and an enabled Purchasing module. Owner and manager roles can create, edit, and deactivate suppliers. Employees can read suppliers and record receipts but cannot manage suppliers. Cashiers cannot read cost-bearing Purchasing data. Disabling Purchasing hides its database reads and rejects new receipts without affecting manual Inventory.
+
+`products.cost_price` means the latest/default received cost. Every successful receipt replaces it with that line's unit cost, including a valid zero cost. The immutable purchase item keeps its historical transaction cost. This field is not COGS, weighted-average cost, FIFO/LIFO, realized cost, or accounting inventory valuation; profitability and valuation remain outside the current model.
+
 ## Deliberately deferred
 
 - Invitation and ownership-transfer workflows
-- Refunds/cancellations, purchasing, customer, supplier, expense, AI, forecast, notification, and analytics tables
+- Refunds/cancellations, purchase orders/drafts/returns, customer, expense, AI, forecast, notification, and analytics tables
 - Seed or demo data
 - Generated TypeScript database types
 - Finer role capabilities and cashier inventory permissions
-- Backend integration for trusted Purchasing movement sources
+- Accounting inventory valuation, COGS, and profitability
