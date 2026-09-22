@@ -10,6 +10,7 @@ describe("getStockState", () => {
     ["3", "3.000", "Low stock"],
     ["3.001", "3", "In stock"],
     ["100000000000000.001", "99999999999999.999", "In stock"],
+    ["1.25", null, "In stock"],
   ])("maps quantity %s and threshold %s to %s", (quantity, threshold, expected) => {
     expect(getStockState(quantity, threshold)).toBe(expected)
   })

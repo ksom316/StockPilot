@@ -5,6 +5,7 @@ import { OnboardingOnly, PublicOnly, RequireAuth, RequireBusiness } from "@/feat
 import { DashboardPage } from "@/pages/dashboard-page"
 import { HomePage } from "@/pages/home-page"
 import { InventoryPage } from "@/pages/inventory-page"
+import { InventoryMovementsPage } from "@/pages/inventory-movements-page"
 import { LoginPage } from "@/pages/login-page"
 import { NotFoundPage } from "@/pages/not-found-page"
 import { OnboardingPage } from "@/pages/onboarding-page"
@@ -34,6 +35,7 @@ export const routes = [
             children: [
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/inventory", element: <InventoryPage /> },
+              { path: "/inventory/movements", element: <InventoryMovementsPage /> },
             ],
           },
         ],

@@ -1,10 +1,14 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { useState } from "react"
 
 import { routes } from "@/routes/router"
+
+vi.mock("@/features/inventory/inventory-queries", () => ({
+  useInventoryMovements: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
+}))
 import {
   createAuthValue,
   createBusinessValue,
@@ -36,6 +40,11 @@ describe("authentication routes", () => {
   it("protects the inventory route", async () => {
     renderRoute("/inventory")
     expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
+  })
+
+  it("protects movement history and renders it for an authenticated business member", async () => {
+    renderRoute("/inventory/movements", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "cashier", onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /movement history/i })).toBeInTheDocument()
   })
 
   it("redirects a signed-out onboarding visit to sign in", async () => {

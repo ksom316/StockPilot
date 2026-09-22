@@ -42,3 +42,20 @@ export interface StockMovementInput {
   quantity: string
   reason: string | null
 }
+
+export interface InventoryMovement {
+  id: string
+  businessId: string
+  productId: string
+  productName: string
+  productSku: string
+  movementType: InventoryMovementType
+  quantity: string
+  quantityBefore: string
+  quantityAfter: string
+  reason: string | null
+  actorUserId: string | null
+  sourceType: string
+  sourceReference: string | null
+  createdAt: string
+}

@@ -1,5 +1,6 @@
-import { ArrowUpDown, FolderCog, PackageOpen, Pencil, Plus, Search } from "lucide-react"
+import { ArrowUpDown, FolderCog, History, PackageOpen, Pencil, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { useBusiness } from "@/features/business/business-context"
@@ -26,6 +27,7 @@ export function InventoryPage() {
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("active")
+  const [stockFilter, setStockFilter] = useState("all")
   const [showProductForm, setShowProductForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [stockProduct, setStockProduct] = useState<Product | null>(null)
@@ -39,9 +41,11 @@ export function InventoryPage() {
       const matchesSearch = !query || product.name.toLocaleLowerCase().includes(query) || product.sku.toLocaleLowerCase().includes(query)
       const matchesCategory = categoryFilter === "all" || (categoryFilter === "uncategorized" ? !product.categoryId : product.categoryId === categoryFilter)
       const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? product.isActive : !product.isActive)
-      return matchesSearch && matchesCategory && matchesStatus
+      const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
+      const matchesStock = stockFilter === "all" || (stockFilter === "attention" ? stockState !== "In stock" : stockState === stockFilter)
+      return matchesSearch && matchesCategory && matchesStatus && matchesStock
     })
-  }, [categoryFilter, products.data, search, statusFilter])
+  }, [categoryFilter, products.data, search, statusFilter, stockFilter])
 
   const saveProduct = async (input: ProductInput) => {
     if (editingProduct) {
@@ -82,7 +86,7 @@ export function InventoryPage() {
 
       {successMessage && <div aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary" role="status">{successMessage}</div>}
 
-      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
         <label className="relative block">
           <span className="sr-only">Search products</span>
           <Search aria-hidden="true" className="absolute left-3 top-3 size-4 text-muted-foreground" />
@@ -102,6 +106,15 @@ export function InventoryPage() {
             <option value="active">Active products</option>
             <option value="inactive">Inactive products</option>
             <option value="all">All statuses</option>
+          </select>
+        </label>
+        <label>
+          <span className="sr-only">Filter by stock attention</span>
+          <select className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setStockFilter(event.target.value)} value={stockFilter}>
+            <option value="all">All stock levels</option>
+            <option value="attention">Needs attention</option>
+            <option value="Low stock">Low stock</option>
+            <option value="Out of stock">Out of stock</option>
           </select>
         </label>
       </div>
@@ -126,7 +139,7 @@ export function InventoryPage() {
         <>
           <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-sm md:block">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Category</th><th className="px-4 py-3 text-right font-medium">Price</th><th className="px-4 py-3 text-right font-medium">Quantity</th><th className="px-4 py-3 font-medium">Stock</th>{canManage && <th className="px-4 py-3"><span className="sr-only">Actions</span></th>}</tr></thead>
+              <thead className="border-b border-border bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Category</th><th className="px-4 py-3 text-right font-medium">Price</th><th className="px-4 py-3 text-right font-medium">Quantity</th><th className="px-4 py-3 font-medium">Stock</th><th className="px-4 py-3"><span className="sr-only">Actions</span></th></tr></thead>
               <tbody className="divide-y divide-border">{filteredProducts.map((product) => <ProductRow canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} onStock={() => setStockProduct(product)} product={product} />)}</tbody>
             </table>
           </div>
@@ -143,10 +156,10 @@ export function InventoryPage() {
 
 function ProductRow({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
-  return <tr className={!product.isActive ? "opacity-60" : undefined}><td className="px-4 py-4"><p className="font-medium">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku}{!product.isActive && " · Inactive"}</p></td><td className="px-4 py-4 text-muted-foreground">{product.categoryName ?? "Uncategorized"}</td><td className="px-4 py-4 text-right">{formatMoney(product.sellingPrice, currency)}</td><td className="px-4 py-4 text-right font-medium">{formatQuantity(product.currentQuantity)}</td><td className="px-4 py-4"><StockBadge state={stockState} /></td>{canManage && <td className="px-4 py-4"><div className="flex justify-end gap-2"><Button aria-label={`Manage stock for ${product.name}`} onClick={onStock} size="sm" variant="outline"><ArrowUpDown className="mr-1.5 size-3.5" />Stock</Button><Button aria-label={`Edit ${product.name}`} onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button></div></td>}</tr>
+  return <tr className={!product.isActive ? "opacity-60" : undefined}><td className="px-4 py-4"><p className="font-medium">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku}{!product.isActive && " · Inactive"}</p></td><td className="px-4 py-4 text-muted-foreground">{product.categoryName ?? "Uncategorized"}</td><td className="px-4 py-4 text-right">{formatMoney(product.sellingPrice, currency)}</td><td className="px-4 py-4 text-right font-medium">{formatQuantity(product.currentQuantity)}</td><td className="px-4 py-4"><StockBadge state={stockState} /></td><td className="px-4 py-4"><div className="flex justify-end gap-2"><Button asChild size="sm" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History aria-hidden="true" className="mr-1.5 size-3.5" />History</Link></Button>{canManage && <><Button aria-label={`Manage stock for ${product.name}`} onClick={onStock} size="sm" variant="outline"><ArrowUpDown className="mr-1.5 size-3.5" />Stock</Button><Button aria-label={`Edit ${product.name}`} onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button></>}</div></td></tr>
 }
 
 function ProductCard({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
-  return <article className={`rounded-xl border border-border bg-card p-4 shadow-sm ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)}</p></div></div><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div>{canManage && <Button className="mt-4 w-full" onClick={onStock} variant="outline"><ArrowUpDown className="mr-2 size-4" />Manage stock</Button>}</article>
+  return <article className={`rounded-xl border border-border bg-card p-4 shadow-sm ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)}</p></div></div><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild className="w-full" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History className="mr-2 size-4" />History</Link></Button>{canManage && <Button className="w-full" onClick={onStock} variant="outline"><ArrowUpDown className="mr-2 size-4" />Manage stock</Button>}</div></article>
 }

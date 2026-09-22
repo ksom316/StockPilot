@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 
@@ -27,9 +28,9 @@ function queryResult<T>(data: T) {
 
 function renderInventory(role: "owner" | "manager" | "employee" | "cashier" = "owner") {
   return render(
-    <TestBusinessProvider value={createBusinessValue({ business: testBusiness, membership: { ...testMembership, role }, role, onboardingRequired: false })}>
+    <MemoryRouter><TestBusinessProvider value={createBusinessValue({ business: testBusiness, membership: { ...testMembership, role }, role, onboardingRequired: false })}>
       <InventoryPage />
-    </TestBusinessProvider>,
+    </TestBusinessProvider></MemoryRouter>,
   )
 }
 
@@ -64,6 +65,15 @@ describe("InventoryPage", () => {
     await user.selectOptions(screen.getByRole("combobox", { name: /filter by category/i }), "cat-1")
     expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
     expect(screen.queryByText("USB Cable")).not.toBeInTheDocument()
+  })
+
+  it("filters by stock attention and provides per-product movement history", async () => {
+    const user = userEvent.setup()
+    renderInventory("cashier")
+    await user.selectOptions(screen.getByRole("combobox", { name: /filter by stock attention/i }), "attention")
+    expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("USB Cable").length).toBeGreaterThan(0)
+    expect(screen.getAllByRole("link", { name: /view stock history for barcode scanner/i })[0]).toHaveAttribute("href", "/inventory/movements?productId=p1")
   })
 
   it("allows an inventory staff role to open product creation", async () => {

@@ -5,6 +5,7 @@ import {
   createCategory,
   createProduct,
   fetchCategories,
+  fetchInventoryMovements,
   fetchProducts,
   recordStockMovement,
   updateCategory,
@@ -15,6 +16,17 @@ import type { CategoryInput, ProductInput, StockMovementInput } from "@/features
 export const inventoryKeys = {
   categories: (businessId: string) => ["inventory", businessId, "categories"] as const,
   products: (businessId: string) => ["inventory", businessId, "products"] as const,
+  movements: (businessId: string) => ["inventory", businessId, "movements"] as const,
+}
+
+export function useInventoryMovements() {
+  const { business } = useBusiness()
+  const businessId = business?.id ?? ""
+  return useQuery({
+    queryKey: inventoryKeys.movements(businessId),
+    queryFn: () => fetchInventoryMovements(businessId),
+    enabled: Boolean(businessId),
+  })
 }
 
 export function useInventoryCatalog() {
@@ -49,6 +61,14 @@ export function useInventoryMutations() {
     updateProduct: useMutation({ mutationFn: ({ id, input }: { id: string; input: ProductInput }) => updateProduct(id, input), onSuccess: invalidateProducts }),
     createCategory: useMutation({ mutationFn: (input: CategoryInput) => createCategory(businessId, input), onSuccess: invalidateCategories }),
     updateCategory: useMutation({ mutationFn: ({ id, input }: { id: string; input: CategoryInput }) => updateCategory(id, input), onSuccess: invalidateCategories }),
-    recordMovement: useMutation({ mutationFn: (input: StockMovementInput) => recordStockMovement(input), onSuccess: invalidateProducts }),
+    recordMovement: useMutation({
+      mutationFn: (input: StockMovementInput) => recordStockMovement(input),
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: inventoryKeys.products(businessId) }),
+          queryClient.invalidateQueries({ queryKey: inventoryKeys.movements(businessId) }),
+        ])
+      },
+    }),
   }
 }

@@ -1,4 +1,4 @@
-import type { Category, CategoryInput, Product, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
+import type { Category, CategoryInput, InventoryMovement, Product, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
 import { supabase } from "@/lib/supabase"
 
 export class InventoryDataError extends Error {
@@ -46,6 +46,35 @@ export async function fetchProducts(businessId: string): Promise<Product[]> {
       currentQuantity: String(row.current_quantity),
       lowStockThreshold: String(row.low_stock_threshold),
       isActive: row.is_active,
+    }
+  })
+}
+
+export async function fetchInventoryMovements(businessId: string): Promise<InventoryMovement[]> {
+  const { data, error } = await requireClient()
+    .from("inventory_movements")
+    .select("id, business_id, product_id, movement_type, quantity, quantity_before, quantity_after, reason, actor_user_id, source_type, source_reference, created_at, products(name, sku)")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false })
+
+  if (error) throw new InventoryDataError("We couldn't load movement history.", error.code)
+  return (data ?? []).map((row) => {
+    const product = row.products as unknown as { name: string; sku: string } | null
+    return {
+      id: row.id,
+      businessId: row.business_id,
+      productId: row.product_id,
+      productName: product?.name ?? "Unknown product",
+      productSku: product?.sku ?? "",
+      movementType: row.movement_type,
+      quantity: String(row.quantity),
+      quantityBefore: String(row.quantity_before),
+      quantityAfter: String(row.quantity_after),
+      reason: row.reason,
+      actorUserId: row.actor_user_id,
+      sourceType: row.source_type,
+      sourceReference: row.source_reference,
+      createdAt: row.created_at,
     }
   })
 }

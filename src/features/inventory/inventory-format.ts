@@ -16,8 +16,9 @@ function compareNonNegativeDecimals(left: string | number, right: string | numbe
   return aFraction === bFraction ? 0 : aFraction > bFraction ? 1 : -1
 }
 
-export function getStockState(quantity: string | number, threshold: string | number): StockState {
+export function getStockState(quantity: string | number, threshold: string | number | null): StockState {
   if (compareNonNegativeDecimals(quantity, 0) === 0) return "Out of stock"
+  if (threshold === null) return "In stock"
   if (compareNonNegativeDecimals(quantity, threshold) <= 0) return "Low stock"
   return "In stock"
 }
