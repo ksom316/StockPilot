@@ -10,6 +10,9 @@ vi.mock("@/features/inventory/inventory-queries", () => ({
   useInventoryMovements: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
   useInventoryProducts: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
 }))
+vi.mock("@/features/analytics/analytics-queries", () => ({
+  useBusinessOverview: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
+}))
 vi.mock("@/features/sales/sales-queries", () => ({
   useRecordSale: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSalesHistory: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),

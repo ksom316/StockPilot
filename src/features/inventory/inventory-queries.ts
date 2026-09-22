@@ -12,6 +12,7 @@ import {
   updateProduct,
 } from "@/features/inventory/inventory-service"
 import type { CategoryInput, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
+import { analyticsKeys } from "@/features/analytics/analytics-queries"
 
 export const inventoryKeys = {
   categories: (businessId: string) => ["inventory", businessId, "categories"] as const,
@@ -56,7 +57,10 @@ export function useInventoryMutations() {
   const { business } = useBusiness()
   const businessId = business?.id ?? ""
   const queryClient = useQueryClient()
-  const invalidateProducts = () => queryClient.invalidateQueries({ queryKey: inventoryKeys.products(businessId) })
+  const invalidateProducts = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: inventoryKeys.products(businessId) }),
+    queryClient.invalidateQueries({ queryKey: analyticsKeys.overviews(businessId) }),
+  ])
   const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: inventoryKeys.categories(businessId) })
   const invalidateCategoryName = async () => Promise.all([
     queryClient.invalidateQueries({ queryKey: inventoryKeys.categories(businessId) }),
@@ -74,6 +78,7 @@ export function useInventoryMutations() {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: inventoryKeys.products(businessId) }),
           queryClient.invalidateQueries({ queryKey: inventoryKeys.movements(businessId) }),
+          queryClient.invalidateQueries({ queryKey: analyticsKeys.overviews(businessId) }),
         ])
       },
     }),

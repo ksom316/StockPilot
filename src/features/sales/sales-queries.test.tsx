@@ -7,6 +7,7 @@ import { inventoryKeys } from "@/features/inventory/inventory-queries"
 import { financeKeys } from "@/features/finance/finance-keys"
 import { salesKeys, useRecordSale } from "@/features/sales/sales-queries"
 import { customerKeys } from "@/features/customers/customer-queries"
+import { analyticsKeys } from "@/features/analytics/analytics-queries"
 import { SalesDataError } from "@/features/sales/sales-types"
 import { createBusinessValue, testBusiness, TestBusinessProvider } from "@/test/auth-test-utils"
 
@@ -35,12 +36,13 @@ describe("useRecordSale", () => {
       await result.current.mutateAsync({ items: [{ product_id: "p1", quantity: "1", unit_price: "2.50" }], notes: null })
     })
 
-    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(5))
+    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(6))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: salesKeys.list(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: salesKeys.detail(testBusiness.id, "sale-1") })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.products(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.movements(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: financeKeys.summaries(testBusiness.id) })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: analyticsKeys.overviews(testBusiness.id) })
   })
 
   it("invalidates only the linked customer's activity query after a customer sale", async () => {

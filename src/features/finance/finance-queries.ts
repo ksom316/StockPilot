@@ -19,7 +19,7 @@ export function useExpenses() {
   return useQuery({ queryKey: financeKeys.expenses(businessId), queryFn: () => fetchExpenses(businessId), enabled: Boolean(businessId) })
 }
 
-export function useFinancialSummary(range: FinanceDateRange | null) {
+export function useFinancialSummary(range: FinanceDateRange | null, enabled = true) {
   const { business } = useBusiness()
   const businessId = business?.id ?? ""
   const startDate = range?.startDate ?? ""
@@ -27,7 +27,7 @@ export function useFinancialSummary(range: FinanceDateRange | null) {
   return useQuery({
     queryKey: range ? financeKeys.summary(businessId, startDate, endDate) : financeKeys.summary(businessId, "", ""),
     queryFn: () => fetchFinancialSummary(businessId, startDate, endDate),
-    enabled: Boolean(businessId && range),
+    enabled: Boolean(businessId && range && enabled),
   })
 }
 

@@ -14,6 +14,12 @@ describe("finance period ranges", () => {
     expect(getFinanceDateRange("month", "not/a-timezone", now)).toBeNull()
   })
 
+  it("accepts custom ranges up to 366 inclusive calendar days and rejects larger or reversed ranges", () => {
+    expect(getFinanceDateRange("custom", "UTC", now, "2025-01-01", "2026-01-01")).toEqual({ startDate: "2025-01-01", endDate: "2026-01-01" })
+    expect(getFinanceDateRange("custom", "UTC", now, "2025-01-01", "2026-01-02")).toBeNull()
+    expect(getFinanceDateRange("custom", "UTC", now, "2026-01-02", "2026-01-01")).toBeNull()
+  })
+
   it("uses Monday through Sunday for This Week", () => {
     expect(getFinanceDateRange("week", "UTC", now)).toEqual({ startDate: "2026-09-21", endDate: "2026-09-27" })
   })

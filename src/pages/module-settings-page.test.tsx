@@ -4,8 +4,8 @@ import { useState } from "react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { describe, expect, it, vi } from "vitest"
 
-const moduleMocks = vi.hoisted(() => ({ useProducts: vi.fn() }))
-vi.mock("@/features/inventory/inventory-queries", () => ({ useInventoryProducts: moduleMocks.useProducts }))
+vi.mock("@/features/analytics/analytics-queries", () => ({ useBusinessOverview: () => ({ data: { businessId: "business-1", startDate: "2026-09-01", endDate: "2026-09-30", timezone: "UTC", inventory: { activeProducts: 0, lowStockProducts: 0, outOfStockProducts: 0 }, sales: { enabled: true, recordedSales: "0.0000", saleCount: 0, averageRecordedSale: null, unitsSold: "0.000", topProductsByUnitsSold: [], dailyTrend: [] }, purchasing: { enabled: false, available: false } }, isLoading: false, isError: false, refetch: vi.fn() }) }))
+vi.mock("@/features/finance/finance-queries", () => ({ useFinancialSummary: () => ({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() }) }))
 
 import { AppShell } from "@/components/layout/app-shell"
 import { BusinessContext } from "@/features/business/business-context"
@@ -112,7 +112,6 @@ function ModuleRoutingFixture() {
 
 describe("module state integration", () => {
   it("updates navigation and dashboard after enabling, then removes a disabled module", async () => {
-    moduleMocks.useProducts.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() })
     const user = userEvent.setup()
     render(<ModuleRoutingFixture />)
     await user.click(screen.getByRole("switch", { name: "Sales module" }))
@@ -120,12 +119,12 @@ describe("module state integration", () => {
     expect(within(navigation).getByText("Sales")).toBeInTheDocument()
     expect(within(navigation).getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/sales")
     await user.click(screen.getByRole("link", { name: "Dashboard" }))
-    expect(screen.getByRole("list")).toHaveTextContent("Sales")
+    expect(screen.getByRole("heading", { name: "Sales overview" })).toBeInTheDocument()
     await user.click(screen.getByRole("link", { name: "Modules" }))
     await user.click(screen.getByRole("switch", { name: "Sales module" }))
     expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).queryByText("Sales")).not.toBeInTheDocument()
     expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).getByRole("link", { name: "Inventory" })).toBeInTheDocument()
     await user.click(screen.getByRole("link", { name: "Dashboard" }))
-    expect(screen.getByRole("list")).not.toHaveTextContent("Sales")
+    expect(screen.queryByRole("heading", { name: "Sales overview" })).not.toBeInTheDocument()
   })
 })
