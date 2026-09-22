@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import { parseExpenseAmount } from "@/features/finance/finance-money"
-import { FinanceDataError, type Expense, type ExpenseAuditEvent, type ExpenseCategory, type ExpenseInput } from "@/features/finance/finance-types"
+import { FinanceDataError, type Expense, type ExpenseAuditEvent, type ExpenseCategory, type ExpenseInput, type FinancialSummary } from "@/features/finance/finance-types"
 
 function requireClient() {
   if (!supabase) throw new FinanceDataError("Finance is unavailable. Refresh and try again.")
@@ -41,6 +41,32 @@ export async function fetchExpenseAudit(businessId: string, expenseId: string): 
   const { data, error } = await requireClient().from("expense_audit").select("action,actor_user_id,changed_at,before_data,after_data").eq("business_id", businessId).eq("expense_id", expenseId).order("changed_at", { ascending: true })
   if (error) throwFinanceError(error, "We couldn't load expense history.")
   return (data ?? []).map((row) => ({ action: row.action, actorLabel: "Team member", changedAt: row.changed_at, beforeData: row.before_data as Record<string, unknown> | null, afterData: row.after_data as Record<string, unknown> | null }))
+}
+
+export async function fetchFinancialSummary(businessId: string, startDate: string, endDate: string): Promise<FinancialSummary> {
+  const { data, error } = await requireClient().rpc("get_financial_summary", { p_business_id: businessId, p_start_date: startDate, p_end_date: endDate }).select(
+    "recorded_sales_text:recorded_sales::text,sale_count,sale_item_count,costed_sale_item_count,missing_cost_sale_item_count,cost_coverage_complete,estimated_product_cost_text:estimated_product_cost::text,estimated_gross_profit_text:estimated_gross_profit::text,estimated_gross_margin_text:estimated_gross_margin::text,operating_expenses_text:operating_expenses::text,estimated_net_profit_text:estimated_net_profit::text,estimated_net_margin_text:estimated_net_margin::text,purchase_receipts_text:purchase_receipts::text",
+  )
+  if (error) throwFinanceError(error, "We couldn't load the financial summary.")
+  const rows = data as unknown as Record<string, unknown>[] | null
+  const row = rows?.[0]
+  if (!row) throw new FinanceDataError("The financial summary was unavailable. Try again.", "INVALID_SUMMARY")
+  const nullableString = (value: unknown) => value == null ? null : String(value)
+  return {
+    recordedSales: String(row.recorded_sales_text),
+    saleCount: Number(row.sale_count),
+    saleItemCount: Number(row.sale_item_count),
+    costedSaleItemCount: Number(row.costed_sale_item_count),
+    missingCostSaleItemCount: Number(row.missing_cost_sale_item_count),
+    costCoverageComplete: Boolean(row.cost_coverage_complete),
+    estimatedProductCost: nullableString(row.estimated_product_cost_text),
+    estimatedGrossProfit: nullableString(row.estimated_gross_profit_text),
+    estimatedGrossMargin: nullableString(row.estimated_gross_margin_text),
+    operatingExpenses: String(row.operating_expenses_text),
+    estimatedNetProfit: nullableString(row.estimated_net_profit_text),
+    estimatedNetMargin: nullableString(row.estimated_net_margin_text),
+    purchaseReceipts: nullableString(row.purchase_receipts_text),
+  }
 }
 
 export async function createExpense(businessId: string, input: ExpenseInput) {

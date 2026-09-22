@@ -43,6 +43,7 @@ export const testBusiness = {
   name: "Northstar Market",
   businessType: "Retail",
   currency: "USD",
+  timezone: "UTC",
 }
 
 export const testMembership = {

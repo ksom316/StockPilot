@@ -39,6 +39,22 @@ export interface ExpenseAuditEvent {
   afterData: Record<string, unknown> | null
 }
 
+export interface FinancialSummary {
+  recordedSales: string
+  saleCount: number
+  saleItemCount: number
+  costedSaleItemCount: number
+  missingCostSaleItemCount: number
+  costCoverageComplete: boolean
+  estimatedProductCost: string | null
+  estimatedGrossProfit: string | null
+  estimatedGrossMargin: string | null
+  operatingExpenses: string
+  estimatedNetProfit: string | null
+  estimatedNetMargin: string | null
+  purchaseReceipts: string | null
+}
+
 export class FinanceDataError extends Error {
   constructor(message: string, public readonly code?: string) {
     super(message)

@@ -77,7 +77,7 @@ export function AppShell() {
                 ) : module === "purchasing" ? (
                   <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/purchasing">{getModuleLabel(module)}</NavLink>
                 ) : module === "expenses" ? (
-                  ["owner", "manager"].includes(role ?? "") ? <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/finance/expenses">Expenses</NavLink> : null
+                  ["owner", "manager"].includes(role ?? "") ? <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/finance">Finance</NavLink> : null
                 ) : (
                   <span aria-disabled="true" className="flex shrink-0 items-center gap-1.5 text-muted-foreground" key={module} title={`${getModuleLabel(module)} is coming soon`}>
                     {getModuleLabel(module)}

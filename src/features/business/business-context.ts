@@ -7,6 +7,7 @@ export interface Business {
   name: string
   businessType: string | null
   currency: string
+  timezone: string
 }
 
 export interface Membership {

@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
+import { FinanceSectionNav } from "@/components/finance/finance-section-nav"
 import { useBusiness } from "@/features/business/business-context"
 import { filterExpenses, type ExpenseStatus } from "@/features/finance/finance-filters"
 import { formatExpenseMoney, isValidIsoDate, parseExpenseAmount } from "@/features/finance/finance-money"
@@ -82,6 +83,7 @@ export function FinanceExpensesPage() {
   }
 
   return <section className="space-y-6">
+    <FinanceSectionNav />
     <header className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-medium text-primary">Finance</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Expenses</h1><p className="mt-2 max-w-2xl text-muted-foreground">Track operating costs such as rent, utilities, transport, marketing, or internet. Stock bought for resale belongs in Purchasing.</p></div><Button onClick={() => beginForm()} disabled={!activeCategories.length}>Add expense</Button></header>
     {status && <p aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-sm" role="status">{status}</p>}
     {error && !formOpen && !voidTarget && <p className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{error}</p>}

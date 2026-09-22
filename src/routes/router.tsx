@@ -14,6 +14,7 @@ import { SignupPage } from "@/pages/signup-page"
 import { SalesCheckoutPage } from "@/pages/sales-checkout-page"
 import { SalesHistoryPage } from "@/pages/sales-history-page"
 import { SaleDetailPage } from "@/pages/sale-detail-page"
+import { FinanceOverviewPage } from "@/pages/finance-overview-page"
 
 export const routes = [
   {
@@ -56,6 +57,7 @@ export const routes = [
                 { path: "/purchasing/:purchaseId", lazy: async () => { const module = await import("@/pages/purchase-detail-page"); return { Component: module.PurchaseDetailPage, HydrateFallback: RouteLoadingScreen } } },
               ] },
               { element: <RequireFinance />, children: [
+                { path: "/finance", element: <FinanceOverviewPage /> },
                 { path: "/finance/expenses", lazy: async () => { const module = await import("@/pages/finance-expenses-page"); return { Component: module.FinanceExpensesPage, HydrateFallback: RouteLoadingScreen } } },
               ] },
             ],

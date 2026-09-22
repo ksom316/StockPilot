@@ -4,6 +4,7 @@ import type { PropsWithChildren } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { inventoryKeys } from "@/features/inventory/inventory-queries"
+import { financeKeys } from "@/features/finance/finance-keys"
 import { salesKeys, useRecordSale } from "@/features/sales/sales-queries"
 import { SalesDataError } from "@/features/sales/sales-types"
 import { createBusinessValue, testBusiness, TestBusinessProvider } from "@/test/auth-test-utils"
@@ -33,11 +34,12 @@ describe("useRecordSale", () => {
       await result.current.mutateAsync({ items: [{ product_id: "p1", quantity: "1", unit_price: "2.50" }], notes: null })
     })
 
-    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(4))
+    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(5))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: salesKeys.list(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: salesKeys.detail(testBusiness.id, "sale-1") })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.products(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.movements(testBusiness.id) })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: financeKeys.summaries(testBusiness.id) })
   })
 
   it("refreshes products after an insufficient-stock rejection", async () => {

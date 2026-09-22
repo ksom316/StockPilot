@@ -24,6 +24,7 @@ vi.mock("@/features/purchasing/purchasing-queries", () => ({
   usePurchaseDetail: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
 }))
 vi.mock("@/features/finance/finance-queries", () => ({
+  useFinancialSummary: () => ({ data: { recordedSales: "123.4500", saleCount: 1, saleItemCount: 1, costedSaleItemCount: 1, missingCostSaleItemCount: 0, costCoverageComplete: true, estimatedProductCost: "50.0000", estimatedGrossProfit: "73.4500", estimatedGrossMargin: "59.4957", operatingExpenses: "12.0000", estimatedNetProfit: "61.4500", estimatedNetMargin: "49.7772", purchaseReceipts: "75.0000" }, isLoading: false, isError: false, refetch: vi.fn() }),
   useExpenses: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
   useExpenseCategories: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
   useExpenseAudit: () => ({ data: [], isLoading: false, isError: false }),
@@ -235,21 +236,38 @@ describe("authentication routes", () => {
 })
 
 describe("Finance routes", () => {
+  it.each(["owner", "manager"] as const)("allows %s to view the Finance overview", async (role) => {
+    renderRoute("/finance", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["expenses"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: "Overview" })).toBeInTheDocument()
+  })
+
+  it.each(["employee", "cashier"] as const)("denies %s access to the Finance overview", async (role) => {
+    renderRoute("/finance", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["expenses"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+  })
+
+  it("blocks the Finance overview when Expenses is disabled", async () => {
+    renderRoute("/finance", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+  })
+
   it.each(["owner", "manager"] as const)("allows %s when Expenses is enabled", async (role) => {
     renderRoute("/finance/expenses", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["expenses"], onboardingRequired: false })
     expect(await screen.findByRole("heading", { name: "Expenses" })).toBeInTheDocument()
-    expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).getByRole("link", { name: "Expenses" })).toHaveAttribute("href", "/finance/expenses")
+    expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).getByRole("link", { name: "Finance" })).toHaveAttribute("href", "/finance")
+    expect(within(screen.getByRole("navigation", { name: /Finance navigation/i })).getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/finance")
+    expect(within(screen.getByRole("navigation", { name: /Finance navigation/i })).getByRole("link", { name: "Expenses" })).toHaveAttribute("href", "/finance/expenses")
   })
 
   it.each(["employee", "cashier"] as const)("denies %s Finance route and hides navigation", async (role) => {
     renderRoute("/finance/expenses", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["expenses"], onboardingRequired: false })
     expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
-    expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).queryByRole("link", { name: "Expenses" })).not.toBeInTheDocument()
+    expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).queryByRole("link", { name: "Finance" })).not.toBeInTheDocument()
   })
 
   it("denies Finance route and hides navigation when module is disabled", async () => {
     renderRoute("/finance/expenses", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
     expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
-    expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).queryByRole("link", { name: "Expenses" })).not.toBeInTheDocument()
+    expect(within(screen.getByRole("navigation", { name: /workspace navigation/i })).queryByRole("link", { name: "Finance" })).not.toBeInTheDocument()
   })
 })

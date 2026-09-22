@@ -4,6 +4,7 @@ import type { PropsWithChildren } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { inventoryKeys } from "@/features/inventory/inventory-queries"
+import { financeKeys } from "@/features/finance/finance-keys"
 import { purchasingKeys, useRecordPurchase } from "@/features/purchasing/purchasing-queries"
 import { createBusinessValue, testBusiness, TestBusinessProvider } from "@/test/auth-test-utils"
 
@@ -30,9 +31,10 @@ describe("useRecordPurchase", () => {
     await act(async () => {
       await result.current.mutateAsync({ items: [], requestId: "r1", supplierId: null, notes: null })
     })
-    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(4))
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.products(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.movements(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: purchasingKeys.history(testBusiness.id) })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: financeKeys.summaries(testBusiness.id) })
   })
 })

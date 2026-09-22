@@ -41,7 +41,7 @@ export function BusinessProvider({ children }: PropsWithChildren) {
 
     const { data: membershipData, error: membershipError } = await supabase
       .from("business_members")
-      .select("id, business_id, role, status, businesses(id, name, business_type, currency)")
+      .select("id, business_id, role, status, businesses(id, name, business_type, currency, timezone)")
       .eq("user_id", user.id)
       .eq("status", "active")
       .limit(2)
@@ -71,6 +71,7 @@ export function BusinessProvider({ children }: PropsWithChildren) {
       name: string
       business_type: string | null
       currency: string
+      timezone: string
     }
     const { data: moduleData, error: moduleError } = await supabase
       .from("business_modules")
@@ -92,6 +93,7 @@ export function BusinessProvider({ children }: PropsWithChildren) {
         name: relatedBusiness.name,
         businessType: relatedBusiness.business_type,
         currency: relatedBusiness.currency,
+        timezone: relatedBusiness.timezone,
       },
       membership: {
         id: activeMembership.id,

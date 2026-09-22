@@ -2,13 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useBusiness } from "@/features/business/business-context"
 import { createExpense, createExpenseCategory, fetchExpenseAudit, fetchExpenseCategories, fetchExpenses, updateExpense, updateExpenseCategory, voidExpense } from "@/features/finance/finance-service"
 import { FinanceDataError, type ExpenseInput } from "@/features/finance/finance-types"
-
-export const financeKeys = {
-  all: (businessId: string) => ["finance", businessId] as const,
-  categories: (businessId: string) => ["finance", businessId, "categories"] as const,
-  expenses: (businessId: string) => ["finance", businessId, "expenses"] as const,
-  audit: (businessId: string, expenseId: string) => ["finance", businessId, "expense-audit", expenseId] as const,
-}
+import { fetchFinancialSummary } from "@/features/finance/finance-service"
+import { financeKeys } from "@/features/finance/finance-keys"
+import type { FinanceDateRange } from "@/features/finance/finance-period"
+export { financeKeys } from "@/features/finance/finance-keys"
 
 export function useExpenseCategories() {
   const { business } = useBusiness()
@@ -20,6 +17,18 @@ export function useExpenses() {
   const { business } = useBusiness()
   const businessId = business?.id ?? ""
   return useQuery({ queryKey: financeKeys.expenses(businessId), queryFn: () => fetchExpenses(businessId), enabled: Boolean(businessId) })
+}
+
+export function useFinancialSummary(range: FinanceDateRange | null) {
+  const { business } = useBusiness()
+  const businessId = business?.id ?? ""
+  const startDate = range?.startDate ?? ""
+  const endDate = range?.endDate ?? ""
+  return useQuery({
+    queryKey: range ? financeKeys.summary(businessId, startDate, endDate) : financeKeys.summary(businessId, "", ""),
+    queryFn: () => fetchFinancialSummary(businessId, startDate, endDate),
+    enabled: Boolean(businessId && range),
+  })
 }
 
 export function useExpenseAudit(expenseId: string | null) {
@@ -35,6 +44,7 @@ export function useExpenseMutations() {
     if (!business) return
     await Promise.all([
       client.invalidateQueries({ queryKey: financeKeys.expenses(business.id) }),
+      client.invalidateQueries({ queryKey: financeKeys.summaries(business.id) }),
       ...(expenseId ? [client.invalidateQueries({ queryKey: financeKeys.audit(business.id, expenseId) })] : []),
     ])
   }

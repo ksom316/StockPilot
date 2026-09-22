@@ -5,6 +5,7 @@ import { inventoryKeys } from "@/features/inventory/inventory-queries"
 import { createSupplier, fetchManagedSuppliers, fetchPurchase, fetchPurchases, fetchSuppliers, recordPurchase, setSupplierActive, updateSupplier } from "@/features/purchasing/purchasing-service"
 import type { RecordPurchaseInput, SupplierInput } from "@/features/purchasing/purchasing-types"
 import { PurchasingDataError } from "@/features/purchasing/purchasing-types"
+import { financeKeys } from "@/features/finance/finance-keys"
 
 export const purchasingKeys = {
   suppliers: (businessId: string) => ["purchasing", businessId, "suppliers"] as const,
@@ -70,6 +71,7 @@ export function useRecordPurchase() {
         queryClient.invalidateQueries({ queryKey: inventoryKeys.products(business.id) }),
         queryClient.invalidateQueries({ queryKey: inventoryKeys.movements(business.id) }),
         queryClient.invalidateQueries({ queryKey: purchasingKeys.history(business.id) }),
+        queryClient.invalidateQueries({ queryKey: financeKeys.summaries(business.id) }),
       ])
     },
   })
