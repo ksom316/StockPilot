@@ -54,6 +54,7 @@ The role permissions are:
 | Sales | Read and record through RPC | Read and record through RPC | Read and record through RPC | Read and record through RPC |
 | Purchases | Read and record through RPC when enabled | Read and record through RPC when enabled | Read and record through RPC when enabled | No access |
 | Suppliers | Read and manage when enabled | Read and manage when enabled | Read when enabled | No access |
+| Customers | Read all fields including private note, create, edit, deactivate/reactivate; future history | Same as owner | Basic lookup, create/select; no notes or history | Basic lookup, create/select; no notes or history |
 | Expenses and profitability | Read and manage through RPCs when enabled | Read and manage through RPCs when enabled | No access | No access |
 
 Profiles are private to their user. Authenticated users can select their own profile and update only `display_name`; Auth credentials remain in `auth.users` and are never exposed through `profiles`.
@@ -81,6 +82,16 @@ Each sale item snapshots the product name, SKU, quantity, and transaction unit p
 All active owner, manager, employee, and cashier members can read and record sales. This intentionally allows cashiers to sell while the existing manual inventory RPC continues to reject cashier adjustments. Clients receive read-only access to `sales` and `sale_items`; they cannot directly insert, update, or delete sales, forge totals or actors, or mutate the ledger. Sales RLS hides both tables across tenants.
 
 Current Sales limitations are deliberate: there is no customer, payment, tax, discount, printable receipt, refund, cancellation, or editing workflow. Recorded sales are immutable. Reversal and cancellation require a future audited workflow that restores stock rather than deleting history. History filtering is currently client-side over the loaded business history; pagination/server-side filtering may be needed as sales volume grows.
+
+## Customers foundation
+
+Customers is an optional module, independent of Sales. A customer is a minimal tenant-scoped record with a trimmed 1–160 character name, optional phone (up to 50 characters), email (up to 320), private note (up to 2,000), active flag, and timestamps. Duplicate names, phone numbers, and emails are allowed; there is no automatic merge. Customer records are deactivated/reactivated and not normally hard-deleted.
+
+Walk-in/anonymous sales have `customer_id = NULL` and no customer-name snapshot. A linked sale stores the tenant-safe customer ID plus only the trimmed customer name as an immutable sale-time snapshot; phone, email, and note are never copied to Sales. Existing sales remain anonymous and are not backfilled or retroactively assigned. Sales history reads the snapshot as transaction history, so it remains available if Customers is disabled or the live customer is renamed/deactivated.
+
+RLS requires active membership and enabled Customers. Direct table reads are owner/manager-only so the private `note` is not exposed through a shared Supabase `authenticated` database role. Employee/cashier basic lookup uses `lookup_customers`, which returns only active ID/name/phone/email/status fields. Writes go through `create_customer`, `update_customer`, and `set_customer_active`: employees/cashiers may create without notes, but only owners/managers may edit or change lifecycle state. No customer history/summary RPC exists yet. Future 7C summaries must use linked immutable Sales data and PostgreSQL numeric totals, expose recorded sales only to owners/managers, and must not expose cost/profit/Finance data. No CRM, payment, balance, or loyalty behavior is implied.
+
+`record_sale` accepts an optional customer ID. A NULL customer remains valid when Customers is disabled. A non-NULL customer requires enabled Customers and an active customer in the same business. The RPC locks the customer row while validating it: whichever transaction obtains the lock first determines whether the sale associates while active or is rejected after deactivation commits. Stock, immutable sale/item snapshots, and movements remain one atomic transaction.
 
 Sales currently has no persisted request-id idempotency protection. Adding it is a later hardening opportunity; Purchasing does not modify the existing Sales implementation.
 
