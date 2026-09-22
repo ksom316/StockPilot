@@ -24,6 +24,11 @@ describe("finance period ranges", () => {
     expect(getFinanceDateRange("week", "UTC", now)).toEqual({ startDate: "2026-09-21", endDate: "2026-09-27" })
   })
 
+  it("keeps Monday-to-Sunday week boundaries in the business timezone", () => {
+    expect(getFinanceDateRange("week", "America/Los_Angeles", new Date("2026-09-21T02:00:00.000Z"))).toEqual({ startDate: "2026-09-14", endDate: "2026-09-20" })
+    expect(getFinanceDateRange("week", "America/Los_Angeles", new Date("2026-09-21T07:00:00.000Z"))).toEqual({ startDate: "2026-09-21", endDate: "2026-09-27" })
+  })
+
   it("defaults This Month to the complete current month", () => {
     expect(getFinanceDateRange("month", "UTC", now)).toEqual({ startDate: "2026-09-01", endDate: "2026-09-30" })
   })
