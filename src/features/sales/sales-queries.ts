@@ -7,6 +7,7 @@ import { SalesDataError, type RecordSaleInput } from "@/features/sales/sales-typ
 import { financeKeys } from "@/features/finance/finance-keys"
 import { customerKeys } from "@/features/customers/customer-queries"
 import { analyticsKeys } from "@/features/analytics/analytics-queries"
+import { smartInventoryKeys } from "@/features/smart-inventory/smart-inventory-queries"
 
 export const salesKeys = {
   list: (businessId: string) => ["sales", businessId, "list"] as const,
@@ -51,6 +52,7 @@ export function useRecordSale() {
         queryClient.invalidateQueries({ queryKey: inventoryKeys.movements(business.id) }),
         queryClient.invalidateQueries({ queryKey: financeKeys.summaries(business.id) }),
         queryClient.invalidateQueries({ queryKey: analyticsKeys.overviews(business.id) }),
+        queryClient.invalidateQueries({ queryKey: smartInventoryKeys.snapshots(business.id) }),
         ...(recorded.customerId ? [queryClient.invalidateQueries({ queryKey: customerKeys.activity(business.id, recorded.customerId) })] : []),
       ])
     },

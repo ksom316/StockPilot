@@ -19,3 +19,21 @@ describe("customer workspace navigation", () => {
     expect(screen.queryByRole("link", { name: "Customers" })).not.toBeInTheDocument()
   })
 })
+
+describe("Smart Inventory workspace navigation", () => {
+  function renderSmartShell(role: "owner" | "manager" | "employee" | "cashier", enabled: boolean) {
+    return render(<TestAuthProvider value={createAuthValue({ session: testSession })}><TestBusinessProvider value={createBusinessValue({ business: testBusiness, role, enabledModules: enabled ? ["smart_insights"] : [] })}><MemoryRouter initialEntries={["/dashboard"]}><AppShell /></MemoryRouter></TestBusinessProvider></TestAuthProvider>)
+  }
+
+  it.each(["owner", "manager", "employee"] as const)("shows Smart Inventory for enabled %s workspaces", (role) => {
+    renderSmartShell(role, true)
+    expect(screen.getByRole("link", { name: "Smart Inventory" })).toHaveAttribute("href", "/inventory/insights")
+  })
+
+  it("hides Smart Inventory for cashiers and disabled workspaces", () => {
+    renderSmartShell("cashier", true)
+    expect(screen.queryByRole("link", { name: "Smart Inventory" })).not.toBeInTheDocument()
+    renderSmartShell("owner", false)
+    expect(screen.queryByRole("link", { name: "Smart Inventory" })).not.toBeInTheDocument()
+  })
+})

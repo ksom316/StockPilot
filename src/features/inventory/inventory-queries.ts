@@ -13,6 +13,7 @@ import {
 } from "@/features/inventory/inventory-service"
 import type { CategoryInput, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
 import { analyticsKeys } from "@/features/analytics/analytics-queries"
+import { smartInventoryKeys } from "@/features/smart-inventory/smart-inventory-queries"
 
 export const inventoryKeys = {
   categories: (businessId: string) => ["inventory", businessId, "categories"] as const,
@@ -60,6 +61,7 @@ export function useInventoryMutations() {
   const invalidateProducts = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: inventoryKeys.products(businessId) }),
     queryClient.invalidateQueries({ queryKey: analyticsKeys.overviews(businessId) }),
+    queryClient.invalidateQueries({ queryKey: smartInventoryKeys.snapshots(businessId) }),
   ])
   const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: inventoryKeys.categories(businessId) })
   const invalidateCategoryName = async () => Promise.all([
@@ -79,6 +81,7 @@ export function useInventoryMutations() {
           queryClient.invalidateQueries({ queryKey: inventoryKeys.products(businessId) }),
           queryClient.invalidateQueries({ queryKey: inventoryKeys.movements(businessId) }),
           queryClient.invalidateQueries({ queryKey: analyticsKeys.overviews(businessId) }),
+          queryClient.invalidateQueries({ queryKey: smartInventoryKeys.snapshots(businessId) }),
         ])
       },
     }),
