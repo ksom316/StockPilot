@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { describe, expect, it } from "vitest"
@@ -30,6 +30,11 @@ function renderRoute(path: string, authOverrides = {}, businessOverrides = {}) {
 describe("authentication routes", () => {
   it("redirects an unauthenticated dashboard visit to sign in", async () => {
     renderRoute("/dashboard")
+    expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
+  })
+
+  it("protects the inventory route", async () => {
+    renderRoute("/inventory")
     expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
   })
 
@@ -84,6 +89,12 @@ describe("authentication routes", () => {
     expect(navigation).toHaveTextContent("Inventory")
     expect(navigation).toHaveTextContent("Sales")
     expect(navigation).not.toHaveTextContent("Purchasing")
+  })
+
+  it("keeps Inventory available with no optional modules enabled", async () => {
+    renderRoute("/dashboard", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
+    const navigation = await screen.findByRole("navigation", { name: /workspace navigation/i })
+    expect(within(navigation).getByRole("link", { name: "Inventory" })).toHaveAttribute("href", "/inventory")
   })
 
   it("clears protected workspace access after sign-out", async () => {

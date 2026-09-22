@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/app-shell"
 import { OnboardingOnly, PublicOnly, RequireAuth, RequireBusiness } from "@/features/auth/route-guards"
 import { DashboardPage } from "@/pages/dashboard-page"
 import { HomePage } from "@/pages/home-page"
+import { InventoryPage } from "@/pages/inventory-page"
 import { LoginPage } from "@/pages/login-page"
 import { NotFoundPage } from "@/pages/not-found-page"
 import { OnboardingPage } from "@/pages/onboarding-page"
@@ -30,7 +31,10 @@ export const routes = [
           },
           {
             element: <RequireBusiness />,
-            children: [{ path: "/dashboard", element: <DashboardPage /> }],
+            children: [
+              { path: "/dashboard", element: <DashboardPage /> },
+              { path: "/inventory", element: <InventoryPage /> },
+            ],
           },
         ],
       },

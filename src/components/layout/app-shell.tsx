@@ -68,7 +68,7 @@ export function AppShell() {
           <nav aria-label="Workspace navigation" className="border-t border-border">
             <div className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-3 text-sm sm:px-6">
               <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/dashboard">Dashboard</NavLink>
-              <span aria-disabled="true" className="shrink-0 text-foreground" title="Inventory screens are coming soon">Inventory</span>
+              <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} to="/inventory">Inventory</NavLink>
               {enabledModules.map((module) => (
                 <span aria-disabled="true" className="flex shrink-0 items-center gap-1.5 text-muted-foreground" key={module} title={`${getModuleLabel(module)} is coming soon`}>
                   {getModuleLabel(module)}
