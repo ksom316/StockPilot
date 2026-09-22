@@ -33,3 +33,12 @@ export interface ProductInput {
 export interface CategoryInput {
   name: string
 }
+
+export type InventoryMovementType = "stock_in" | "stock_out" | "adjustment" | "damaged" | "lost"
+
+export interface StockMovementInput {
+  productId: string
+  movementType: InventoryMovementType
+  quantity: string
+  reason: string | null
+}

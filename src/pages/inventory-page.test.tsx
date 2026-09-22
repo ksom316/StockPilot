@@ -39,6 +39,7 @@ describe("InventoryPage", () => {
     inventoryMocks.useMutations.mockReturnValue({
       createProduct: { mutateAsync: vi.fn() }, updateProduct: { mutateAsync: vi.fn() },
       createCategory: { mutateAsync: vi.fn() }, updateCategory: { mutateAsync: vi.fn() },
+      recordMovement: { mutateAsync: vi.fn() },
     })
   })
 
@@ -72,11 +73,19 @@ describe("InventoryPage", () => {
     expect(screen.getByRole("dialog", { name: /add product/i })).toBeInTheDocument()
   })
 
+  it.each(["owner", "manager", "employee"] as const)("allows %s to access stock actions", async (role) => {
+    const user = userEvent.setup()
+    renderInventory(role)
+    await user.click(screen.getAllByRole("button", { name: /manage stock for barcode scanner/i })[0])
+    expect(screen.getByRole("dialog", { name: /manage stock/i })).toBeInTheDocument()
+  })
+
   it("keeps cashier catalog access read-only", () => {
     renderInventory("cashier")
     expect(screen.getAllByText("Barcode Scanner").length).toBeGreaterThan(0)
     expect(screen.queryByRole("button", { name: /add product/i })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /categories/i })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /edit barcode scanner/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /manage stock/i })).not.toBeInTheDocument()
   })
 })

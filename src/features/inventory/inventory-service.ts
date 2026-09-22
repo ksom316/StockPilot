@@ -1,4 +1,4 @@
-import type { Category, CategoryInput, Product, ProductInput } from "@/features/inventory/inventory-types"
+import type { Category, CategoryInput, Product, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
 import { supabase } from "@/lib/supabase"
 
 export class InventoryDataError extends Error {
@@ -94,4 +94,24 @@ export async function createCategory(businessId: string, input: CategoryInput): 
 export async function updateCategory(categoryId: string, input: CategoryInput): Promise<void> {
   const { error } = await requireClient().from("categories").update({ name: input.name }).eq("id", categoryId)
   if (error) throw new InventoryDataError("We couldn't update this category.", error.code)
+}
+
+export async function recordStockMovement(input: StockMovementInput): Promise<void> {
+  const { error } = await requireClient().rpc("record_inventory_movement", {
+    p_product_id: input.productId,
+    p_movement_type: input.movementType,
+    p_quantity: input.quantity,
+    p_reason: input.reason,
+    p_source_type: "manual",
+    p_source_reference: null,
+  })
+
+  if (!error) return
+  if (error.code === "23514" || error.message.toLowerCase().includes("negative stock")) {
+    throw new InventoryDataError("There isn't enough stock for this operation. Refresh the catalog and try again.", "INSUFFICIENT_STOCK")
+  }
+  if (error.code === "42501") {
+    throw new InventoryDataError("This stock operation is no longer permitted. Refresh your session and try again.", error.code)
+  }
+  throw new InventoryDataError("We couldn't record this stock operation. Please try again.", error.code)
 }

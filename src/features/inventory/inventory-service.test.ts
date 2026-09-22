@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const serviceMocks = vi.hoisted(() => ({ from: vi.fn(), insert: vi.fn(), update: vi.fn(), eq: vi.fn() }))
+const serviceMocks = vi.hoisted(() => ({ from: vi.fn(), insert: vi.fn(), update: vi.fn(), eq: vi.fn(), rpc: vi.fn() }))
 
-vi.mock("@/lib/supabase", () => ({ supabase: { from: serviceMocks.from } }))
+vi.mock("@/lib/supabase", () => ({ supabase: { from: serviceMocks.from, rpc: serviceMocks.rpc } }))
 
-import { createProduct, fetchProducts, updateProduct } from "@/features/inventory/inventory-service"
+import { createProduct, fetchProducts, recordStockMovement, updateProduct } from "@/features/inventory/inventory-service"
 import type { ProductInput } from "@/features/inventory/inventory-types"
 
 const input: ProductInput = {
@@ -24,6 +24,7 @@ describe("inventory service product writes", () => {
     serviceMocks.insert.mockResolvedValue({ error: null })
     serviceMocks.eq.mockResolvedValue({ error: null })
     serviceMocks.update.mockReturnValue({ eq: serviceMocks.eq })
+    serviceMocks.rpc.mockResolvedValue({ error: null })
     serviceMocks.from.mockReturnValue({ insert: serviceMocks.insert, update: serviceMocks.update })
   })
 
@@ -52,5 +53,18 @@ describe("inventory service product writes", () => {
 
     expect(serviceMocks.from).toHaveBeenCalledWith("products")
     expect(businessEq).toHaveBeenCalledWith("business_id", "business-1")
+  })
+
+  it("records stock exclusively through the secured RPC", async () => {
+    await recordStockMovement({ productId: "product-1", movementType: "stock_out", quantity: "2.5", reason: "Customer return correction" })
+    expect(serviceMocks.rpc).toHaveBeenCalledWith("record_inventory_movement", {
+      p_product_id: "product-1",
+      p_movement_type: "stock_out",
+      p_quantity: "2.5",
+      p_reason: "Customer return correction",
+      p_source_type: "manual",
+      p_source_reference: null,
+    })
+    expect(serviceMocks.update).not.toHaveBeenCalled()
   })
 })

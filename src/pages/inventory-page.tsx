@@ -1,4 +1,4 @@
-import { FolderCog, PackageOpen, Pencil, Plus, Search } from "lucide-react"
+import { ArrowUpDown, FolderCog, PackageOpen, Pencil, Plus, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -6,8 +6,9 @@ import { useBusiness } from "@/features/business/business-context"
 import { CategoryManagerDialog } from "@/features/inventory/category-manager-dialog"
 import { formatMoney, formatQuantity, getStockState, type StockState } from "@/features/inventory/inventory-format"
 import { useInventoryCatalog, useInventoryMutations } from "@/features/inventory/inventory-queries"
-import type { Product, ProductInput } from "@/features/inventory/inventory-types"
+import type { Product, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
 import { ProductFormDialog } from "@/features/inventory/product-form-dialog"
+import { StockOperationDialog } from "@/features/inventory/stock-operation-dialog"
 
 function StockBadge({ state }: { state: StockState }) {
   const classes = state === "Out of stock"
@@ -27,6 +28,7 @@ export function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState("active")
   const [showProductForm, setShowProductForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [stockProduct, setStockProduct] = useState<Product | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const canManage = role === "owner" || role === "manager" || role === "employee"
@@ -53,6 +55,12 @@ export function InventoryPage() {
     setShowProductForm(false)
   }
 
+  const recordMovement = async (input: StockMovementInput) => {
+    await mutations.recordMovement.mutateAsync(input)
+    setSuccessMessage(`Stock for ${stockProduct?.name ?? "the product"} was updated.`)
+    setStockProduct(null)
+  }
+
   const isLoading = products.isLoading || categories.isLoading
   const hasError = products.isError || categories.isError
 
@@ -62,7 +70,7 @@ export function InventoryPage() {
         <div>
           <p className="text-sm font-medium text-primary">Core inventory</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Product catalog</h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">Manage product details and categories. Stock quantities are read-only until inventory movements are available.</p>
+          <p className="mt-2 max-w-2xl text-muted-foreground">Manage catalog details, categories, and day-to-day stock changes.</p>
         </div>
         {canManage && (
           <div className="flex flex-wrap gap-2">
@@ -119,25 +127,26 @@ export function InventoryPage() {
           <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-sm md:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Category</th><th className="px-4 py-3 text-right font-medium">Price</th><th className="px-4 py-3 text-right font-medium">Quantity</th><th className="px-4 py-3 font-medium">Stock</th>{canManage && <th className="px-4 py-3"><span className="sr-only">Actions</span></th>}</tr></thead>
-              <tbody className="divide-y divide-border">{filteredProducts.map((product) => <ProductRow canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} product={product} />)}</tbody>
+              <tbody className="divide-y divide-border">{filteredProducts.map((product) => <ProductRow canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} onStock={() => setStockProduct(product)} product={product} />)}</tbody>
             </table>
           </div>
-          <div className="grid gap-3 md:hidden">{filteredProducts.map((product) => <ProductCard canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} product={product} />)}</div>
+          <div className="grid gap-3 md:hidden">{filteredProducts.map((product) => <ProductCard canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} onStock={() => setStockProduct(product)} product={product} />)}</div>
         </>
       )}
 
       {(showProductForm || editingProduct) && business && <ProductFormDialog categories={categories.data ?? []} currency={business.currency} onClose={() => { setShowProductForm(false); setEditingProduct(null) }} onSubmit={saveProduct} product={editingProduct ?? undefined} />}
       {showCategories && <CategoryManagerDialog categories={categories.data ?? []} onClose={() => setShowCategories(false)} onCreate={(input) => mutations.createCategory.mutateAsync(input)} onUpdate={(id, input) => mutations.updateCategory.mutateAsync({ id, input })} />}
+      {stockProduct && <StockOperationDialog onClose={() => setStockProduct(null)} onSubmit={recordMovement} product={stockProduct} />}
     </section>
   )
 }
 
-function ProductRow({ product, currency, canManage, onEdit }: { product: Product; currency: string; canManage: boolean; onEdit: () => void }) {
+function ProductRow({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
-  return <tr className={!product.isActive ? "opacity-60" : undefined}><td className="px-4 py-4"><p className="font-medium">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku}{!product.isActive && " · Inactive"}</p></td><td className="px-4 py-4 text-muted-foreground">{product.categoryName ?? "Uncategorized"}</td><td className="px-4 py-4 text-right">{formatMoney(product.sellingPrice, currency)}</td><td className="px-4 py-4 text-right font-medium">{formatQuantity(product.currentQuantity)}</td><td className="px-4 py-4"><StockBadge state={stockState} /></td>{canManage && <td className="px-4 py-4 text-right"><Button aria-label={`Edit ${product.name}`} onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button></td>}</tr>
+  return <tr className={!product.isActive ? "opacity-60" : undefined}><td className="px-4 py-4"><p className="font-medium">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku}{!product.isActive && " · Inactive"}</p></td><td className="px-4 py-4 text-muted-foreground">{product.categoryName ?? "Uncategorized"}</td><td className="px-4 py-4 text-right">{formatMoney(product.sellingPrice, currency)}</td><td className="px-4 py-4 text-right font-medium">{formatQuantity(product.currentQuantity)}</td><td className="px-4 py-4"><StockBadge state={stockState} /></td>{canManage && <td className="px-4 py-4"><div className="flex justify-end gap-2"><Button aria-label={`Manage stock for ${product.name}`} onClick={onStock} size="sm" variant="outline"><ArrowUpDown className="mr-1.5 size-3.5" />Stock</Button><Button aria-label={`Edit ${product.name}`} onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button></div></td>}</tr>
 }
 
-function ProductCard({ product, currency, canManage, onEdit }: { product: Product; currency: string; canManage: boolean; onEdit: () => void }) {
+function ProductCard({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
-  return <article className={`rounded-xl border border-border bg-card p-4 shadow-sm ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)}</p></div></div><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div></article>
+  return <article className={`rounded-xl border border-border bg-card p-4 shadow-sm ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)}</p></div></div><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div>{canManage && <Button className="mt-4 w-full" onClick={onStock} variant="outline"><ArrowUpDown className="mr-2 size-4" />Manage stock</Button>}</article>
 }

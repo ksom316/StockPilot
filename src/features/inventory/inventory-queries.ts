@@ -6,10 +6,11 @@ import {
   createProduct,
   fetchCategories,
   fetchProducts,
+  recordStockMovement,
   updateCategory,
   updateProduct,
 } from "@/features/inventory/inventory-service"
-import type { CategoryInput, ProductInput } from "@/features/inventory/inventory-types"
+import type { CategoryInput, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
 
 export const inventoryKeys = {
   categories: (businessId: string) => ["inventory", businessId, "categories"] as const,
@@ -48,5 +49,6 @@ export function useInventoryMutations() {
     updateProduct: useMutation({ mutationFn: ({ id, input }: { id: string; input: ProductInput }) => updateProduct(id, input), onSuccess: invalidateProducts }),
     createCategory: useMutation({ mutationFn: (input: CategoryInput) => createCategory(businessId, input), onSuccess: invalidateCategories }),
     updateCategory: useMutation({ mutationFn: ({ id, input }: { id: string; input: CategoryInput }) => updateCategory(id, input), onSuccess: invalidateCategories }),
+    recordMovement: useMutation({ mutationFn: (input: StockMovementInput) => recordStockMovement(input), onSuccess: invalidateProducts }),
   }
 }
