@@ -25,6 +25,8 @@ export function createAuthValue(overrides: Partial<AuthContextValue> = {}): Auth
     user: null,
     session: null,
     isLoading: false,
+    initializationError: null,
+    retryInitialization: vi.fn(),
     signUp: vi.fn(),
     signIn: vi.fn(),
     signOut: vi.fn(),

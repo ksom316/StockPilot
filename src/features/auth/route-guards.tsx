@@ -15,22 +15,36 @@ export function RouteLoadingScreen({ message = "Loading your workspace…" }: { 
 }
 
 export function RequireAuth() {
-  const { session, isLoading } = useAuth()
+  const { session, isLoading, initializationError, retryInitialization } = useAuth()
   const location = useLocation()
 
   if (isLoading) return <RouteLoadingScreen message="Restoring your session…" />
+  if (initializationError) return <AuthInitializationError message={initializationError} onRetry={retryInitialization} />
   if (!session) return <Navigate replace state={{ from: location }} to="/login" />
 
   return <Outlet />
 }
 
 export function PublicOnly() {
-  const { session, isLoading } = useAuth()
+  const { session, isLoading, initializationError, retryInitialization } = useAuth()
 
   if (isLoading) return <RouteLoadingScreen message="Restoring your session…" />
+  if (initializationError) return <AuthInitializationError message={initializationError} onRetry={retryInitialization} />
   if (session) return <Navigate replace to="/dashboard" />
 
   return <Outlet />
+}
+
+function AuthInitializationError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <section className="mx-auto max-w-lg rounded-xl border border-destructive/25 bg-card p-6 text-center shadow-sm" role="alert">
+      <h1 className="text-xl font-semibold">Session unavailable</h1>
+      <p className="mt-2 text-muted-foreground">{message}</p>
+      <button className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" onClick={onRetry} type="button">
+        Try again
+      </button>
+    </section>
+  )
 }
 
 function WorkspaceError() {

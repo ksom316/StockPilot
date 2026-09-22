@@ -131,17 +131,18 @@ export function BusinessProvider({ children }: PropsWithChildren) {
   }, [resolveBusiness, user])
 
   const isLoading = isAuthLoading || Boolean(user && state.resolvedUserId !== user.id)
+  const resolvedState = user && state.resolvedUserId === user.id ? state : emptyState
   const value = useMemo<BusinessContextValue>(() => ({
-    business: state.business,
-    membership: state.membership,
-    role: state.membership?.role ?? null,
-    enabledModules: state.enabledModules,
+    business: resolvedState.business,
+    membership: resolvedState.membership,
+    role: resolvedState.membership?.role ?? null,
+    enabledModules: resolvedState.enabledModules,
     isLoading,
-    onboardingRequired: Boolean(user && !isLoading && !state.business && !state.error),
-    error: state.error,
+    onboardingRequired: Boolean(user && !isLoading && !resolvedState.business && !resolvedState.error),
+    error: resolvedState.error,
     refresh: resolveBusiness,
     completeOnboarding,
-  }), [completeOnboarding, isLoading, resolveBusiness, state, user])
+  }), [completeOnboarding, isLoading, resolveBusiness, resolvedState, user])
 
   return <BusinessContext.Provider value={value}>{children}</BusinessContext.Provider>
 }

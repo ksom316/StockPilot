@@ -9,6 +9,14 @@ const configurationError = "Authentication is not configured. Add the local Supa
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(Boolean(supabase))
+  const [initializationError, setInitializationError] = useState<string | null>(null)
+  const [retryAttempt, setRetryAttempt] = useState(0)
+
+  const retryInitialization = useCallback(() => {
+    setInitializationError(null)
+    setIsLoading(Boolean(supabase))
+    setRetryAttempt((attempt) => attempt + 1)
+  }, [])
 
   useEffect(() => {
     if (!supabase) {
@@ -16,29 +24,42 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     let isMounted = true
+    let receivedAuthEvent = false
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      receivedAuthEvent = true
       if (isMounted) {
         setSession(nextSession)
+        setInitializationError(null)
         setIsLoading(false)
       }
     })
 
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (!isMounted) return
+    void supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (!isMounted || receivedAuthEvent) return
 
-      if (error) {
+        if (error) {
+          setSession(null)
+          setInitializationError("We couldn't restore your session. Check your connection and try again.")
+        } else {
+          setSession(data.session)
+          setInitializationError(null)
+        }
+        setIsLoading(false)
+      })
+      .catch(() => {
+        if (!isMounted || receivedAuthEvent) return
+
         setSession(null)
-      } else {
-        setSession(data.session)
-      }
-      setIsLoading(false)
-    })
+        setInitializationError("We couldn't restore your session. Check your connection and try again.")
+        setIsLoading(false)
+      })
 
     return () => {
       isMounted = false
       listener.subscription.unsubscribe()
     }
-  }, [])
+  }, [retryAttempt])
 
   const signUp = useCallback(async (fullName: string, email: string, password: string): Promise<SignUpResult> => {
     if (!supabase) throw new Error(configurationError)
@@ -75,8 +96,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user: session?.user ?? null, session, isLoading, signUp, signIn, signOut }),
-    [isLoading, session, signIn, signOut, signUp],
+    () => ({ user: session?.user ?? null, session, isLoading, initializationError, retryInitialization, signUp, signIn, signOut }),
+    [initializationError, isLoading, retryInitialization, session, signIn, signOut, signUp],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

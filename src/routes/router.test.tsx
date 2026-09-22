@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { describe, expect, it } from "vitest"
+import { useState } from "react"
 
 import { routes } from "@/routes/router"
 import {
@@ -31,6 +33,11 @@ describe("authentication routes", () => {
     expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
   })
 
+  it("redirects a signed-out onboarding visit to sign in", async () => {
+    renderRoute("/onboarding")
+    expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
+  })
+
   it("renders the dashboard for an authenticated session", async () => {
     renderRoute("/dashboard", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", onboardingRequired: false })
     expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
@@ -40,6 +47,20 @@ describe("authentication routes", () => {
     renderRoute("/dashboard", { isLoading: true })
     expect(screen.getByRole("status")).toHaveTextContent(/restoring your session/i)
     expect(screen.queryByRole("heading", { name: /welcome to stockpilot/i })).not.toBeInTheDocument()
+  })
+
+  it("surfaces session initialization failures with a retry action", () => {
+    renderRoute("/dashboard", { initializationError: "Session restore failed" })
+    expect(screen.getByRole("alert")).toHaveTextContent("Session restore failed")
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: /sign in to stockpilot/i })).not.toBeInTheDocument()
+  })
+
+  it("keeps dashboard and onboarding hidden while the business is resolving", () => {
+    renderRoute("/dashboard", { session: testSession, user: testUser }, { isLoading: true })
+    expect(screen.getByRole("status")).toHaveTextContent(/loading your workspace/i)
+    expect(screen.queryByRole("heading", { name: /welcome to/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: /set up your stockpilot workspace/i })).not.toBeInTheDocument()
   })
 
   it("redirects authenticated users away from sign in", async () => {
@@ -63,5 +84,29 @@ describe("authentication routes", () => {
     expect(navigation).toHaveTextContent("Inventory")
     expect(navigation).toHaveTextContent("Sales")
     expect(navigation).not.toHaveTextContent("Purchasing")
+  })
+
+  it("clears protected workspace access after sign-out", async () => {
+    const user = userEvent.setup()
+    function SignOutHarness() {
+      const [signedIn, setSignedIn] = useState(true)
+      return (
+        <TestAuthProvider value={createAuthValue({
+          session: signedIn ? testSession : null,
+          user: signedIn ? testUser : null,
+          signOut: async () => setSignedIn(false),
+        })}>
+          <TestBusinessProvider value={createBusinessValue({ business: testBusiness, membership: testMembership, role: "owner", onboardingRequired: false })}>
+            <RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/dashboard"] })} />
+          </TestBusinessProvider>
+        </TestAuthProvider>
+      )
+    }
+
+    render(<SignOutHarness />)
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /sign out/i }))
+    expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: /welcome to northstar market/i })).not.toBeInTheDocument()
   })
 })

@@ -10,6 +10,8 @@ export interface AuthContextValue {
   user: User | null
   session: Session | null
   isLoading: boolean
+  initializationError: string | null
+  retryInitialization: () => void
   signUp: (fullName: string, email: string, password: string) => Promise<SignUpResult>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>

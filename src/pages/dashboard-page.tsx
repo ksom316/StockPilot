@@ -12,8 +12,10 @@ export function DashboardPage() {
     <section className="space-y-6">
       <div>
         <p className="text-sm font-medium text-primary">Dashboard</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Welcome to {business?.name}</h1>
-        <p className="mt-2 text-muted-foreground">{business?.businessType} workspace · Signed in as {user?.email}</p>
+        <h1 className="mt-1 break-words text-3xl font-semibold tracking-tight">Welcome to {business?.name ?? "your workspace"}</h1>
+        <p className="mt-2 break-words text-muted-foreground">
+          {business?.businessType ? `${business.businessType} workspace · ` : "Business workspace · "}Signed in as {user?.email}
+        </p>
       </div>
       <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
