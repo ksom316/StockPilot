@@ -12,6 +12,7 @@ vi.mock("@/features/inventory/inventory-service", () => queryMocks)
 
 import { BusinessContext } from "@/features/business/business-context"
 import { inventoryKeys, useInventoryMutations } from "@/features/inventory/inventory-queries"
+import { smartInventoryKeys } from "@/features/smart-inventory/smart-inventory-queries"
 import { createBusinessValue, testBusiness, testMembership } from "@/test/auth-test-utils"
 
 describe("inventory query invalidation", () => {
@@ -49,6 +50,7 @@ describe("inventory query invalidation", () => {
     expect(queryMocks.recordStockMovement).toHaveBeenCalledOnce()
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.products(testBusiness.id) })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: inventoryKeys.movements(testBusiness.id) })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: smartInventoryKeys.snapshots(testBusiness.id) })
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: inventoryKeys.categories(testBusiness.id) })
   })
 
