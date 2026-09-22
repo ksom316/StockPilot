@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment files
+.env*
+!.env.example
+.supabase/
+
+# Credentials, certificates, and local database artifacts
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editors and operating systems
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
