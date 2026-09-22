@@ -25,7 +25,7 @@ const overview: BusinessOverview = {
     averageRecordedSale: "499999999999999.5617",
     unitsSold: "3.125",
     topProductsByUnitsSold: [{ productId: "product-a", productName: "Historic Item", productSku: "OLD-1", unitsSold: "2.500", recordedSales: "500.0000" }],
-    dailyTrend: [],
+    dailyTrend: [{ date: "2026-09-01", recordedSales: "999999999999999.1234", saleCount: 1 }, { date: "2026-09-02", recordedSales: "0.0000", saleCount: 0 }],
   },
   purchasing: { enabled: true, available: true, receiptCount: 1, purchaseReceipts: "12.3401", quantityReceived: "4.250" },
 }
@@ -58,6 +58,8 @@ describe("module-aware dashboard overview", () => {
     expect(within(inventory).getByRole("link", { name: "Active Products: 5" })).toHaveAttribute("href", "/inventory")
     expect(within(inventory).getByRole("link", { name: "Low Stock: 2" })).toHaveAttribute("href", "/inventory?stock=low")
     expect(within(inventory).getByRole("link", { name: "Out of Stock: 1" })).toHaveAttribute("href", "/inventory?stock=out")
+    expect(within(inventory).getByRole("heading", { name: "Inventory Status" })).toBeInTheDocument()
+    expect(within(inventory).getByRole("list", { name: "Inventory status counts" })).toHaveTextContent("In Stock2Low Stock2Out of Stock1")
     expect(screen.queryByRole("region", { name: /sales overview/i })).not.toBeInTheDocument()
     expect(screen.queryByRole("region", { name: /purchasing overview/i })).not.toBeInTheDocument()
     expect(screen.queryByRole("region", { name: /financial overview/i })).not.toBeInTheDocument()
@@ -72,6 +74,10 @@ describe("module-aware dashboard overview", () => {
     expect(within(sales).getByText("Units Sold During Period").parentElement).toHaveTextContent("3.125")
     expect(within(sales).getByRole("heading", { name: "Top Products by Units Sold" })).toBeInTheDocument()
     expect(within(sales).getByText("Historic Item")).toBeInTheDocument()
+    expect(within(sales).getByRole("heading", { name: "Recorded Sales Trend" })).toBeInTheDocument()
+    expect(within(sales).getByRole("img", { name: "Line chart of daily Recorded Sales" })).toBeInTheDocument()
+    expect(within(sales).getByText((_, element) => element?.tagName === "LI" && element.textContent?.includes("999,999,999,999,999.1234 Recorded Sales") === true)).toBeInTheDocument()
+    expect(within(sales).getAllByText((_, element) => element?.tagName === "LI" && element.textContent?.includes("Sept") === true)).toHaveLength(2)
     expect(within(sales).getByText("SKU OLD-1")).toBeInTheDocument()
     expect(screen.queryByText(/fast moving/i)).not.toBeInTheDocument()
   })
@@ -80,11 +86,13 @@ describe("module-aware dashboard overview", () => {
     const disabled = { ...overview, sales: { enabled: false as const } }
     const { unmount } = renderDashboard({ data: disabled, enabledModules: [] })
     expect(screen.queryByRole("region", { name: /sales overview/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "Recorded Sales Trend" })).not.toBeInTheDocument()
     unmount()
-    const empty = { ...overview, sales: { ...overview.sales, recordedSales: "0.0000", saleCount: 0, averageRecordedSale: null, unitsSold: "0.000", topProductsByUnitsSold: [] } }
+    const empty = { ...overview, sales: { ...overview.sales, recordedSales: "0.0000", saleCount: 0, averageRecordedSale: null, unitsSold: "0.000", topProductsByUnitsSold: [], dailyTrend: [] } }
     renderDashboard({ data: empty, enabledModules: ["sales"] })
     const sales = screen.getByRole("region", { name: /sales overview/i })
     expect(within(sales).getByText("No Sales were recorded in this period.")).toBeInTheDocument()
+    expect(within(sales).getByText("No recorded sales in this period.")).toBeInTheDocument()
     expect(within(sales).getByText("Average Recorded Sale").parentElement).toHaveTextContent("—")
     expect(within(sales).queryByRole("heading", { name: "Top Products by Units Sold" })).not.toBeInTheDocument()
   })
@@ -134,6 +142,7 @@ describe("module-aware dashboard overview", () => {
     const empty = { ...overview, inventory: { activeProducts: 0, lowStockProducts: 0, outOfStockProducts: 0 } }
     renderDashboard({ data: empty, enabledModules: [] })
     expect(screen.getByText("No active products yet")).toBeInTheDocument()
+    expect(screen.getByText("No active products to show.")).toBeInTheDocument()
   })
 
   it("validates the shared custom date range at 366 days", () => {
@@ -144,5 +153,22 @@ describe("module-aware dashboard overview", () => {
     expect(screen.getByText(/at most 366 calendar days/i)).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-01-01" } })
     expect(screen.queryByText(/at most 366 calendar days/i)).not.toBeInTheDocument()
+  })
+
+  it("passes changed dashboard dates to the existing overview query", () => {
+    renderDashboard({ enabledModules: ["sales"] })
+    fireEvent.change(screen.getByLabelText("Period"), { target: { value: "custom" } })
+    fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-09-03" } })
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-09-08" } })
+    const latestRange = dashboardMocks.useOverview.mock.lastCall?.[0]
+    expect(latestRange).toMatchObject({ startDate: "2026-09-03", endDate: "2026-09-08" })
+  })
+
+  it("does not show finance or change operational charts for a cashier", () => {
+    renderDashboard({ role: "cashier", enabledModules: ["sales"] })
+    expect(screen.getByRole("heading", { name: "Recorded Sales Trend" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Inventory Status" })).toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: /estimated financial overview/i })).not.toBeInTheDocument()
+    expect(dashboardMocks.useFinance).toHaveBeenCalledWith(expect.anything(), false)
   })
 })
