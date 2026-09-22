@@ -75,7 +75,7 @@ select is(
     join public.businesses as business on business.id = module.business_id
     where business.owner_user_id = '00000000-0000-0000-0000-000000000011'
   ),
-  7::bigint,
+  8::bigint,
   'all optional module rows are initialized'
 );
 
@@ -100,7 +100,7 @@ select is(
     where business.owner_user_id = '00000000-0000-0000-0000-000000000011'
       and not module.enabled
   ),
-  5::bigint,
+  6::bigint,
   'unselected optional modules remain disabled'
 );
 
