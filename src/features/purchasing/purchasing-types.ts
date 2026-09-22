@@ -6,6 +6,44 @@ export interface Supplier {
   email: string | null
 }
 
+export interface ManagedSupplier extends Supplier {
+  notes: string | null
+  isActive: boolean
+}
+
+export interface SupplierInput {
+  name: string
+  contact_name: string | null
+  phone: string | null
+  email: string | null
+  notes: string | null
+}
+
+export interface PurchaseItem {
+  id: string
+  productName: string
+  productSku: string | null
+  quantity: string
+  unitCost: string
+  lineTotal: string
+}
+
+export interface PurchaseSummary {
+  id: string
+  purchaseReference: string
+  receivedAt: string
+  supplierName: string | null
+  subtotal: string
+  total: string
+  notes: string | null
+  itemCount: number
+  items: Pick<PurchaseItem, "productName" | "productSku">[]
+}
+
+export interface PurchaseDetail extends Omit<PurchaseSummary, "itemCount" | "items"> {
+  items: PurchaseItem[]
+}
+
 export interface PurchaseItemInput {
   product_id: string
   quantity: string

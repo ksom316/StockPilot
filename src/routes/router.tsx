@@ -51,6 +51,9 @@ export const routes = [
                   const module = await import("@/pages/purchasing-page")
                   return { Component: module.PurchasingPage, HydrateFallback: RouteLoadingScreen }
                 } },
+                { path: "/purchasing/suppliers", lazy: async () => { const module = await import("@/pages/purchasing-suppliers-page"); return { Component: module.PurchasingSuppliersPage, HydrateFallback: RouteLoadingScreen } } },
+                { path: "/purchasing/history", lazy: async () => { const module = await import("@/pages/purchase-history-page"); return { Component: module.PurchaseHistoryPage, HydrateFallback: RouteLoadingScreen } } },
+                { path: "/purchasing/:purchaseId", lazy: async () => { const module = await import("@/pages/purchase-detail-page"); return { Component: module.PurchaseDetailPage, HydrateFallback: RouteLoadingScreen } } },
               ] },
             ],
           },

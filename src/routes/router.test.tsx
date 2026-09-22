@@ -18,6 +18,10 @@ vi.mock("@/features/sales/sales-queries", () => ({
 vi.mock("@/features/purchasing/purchasing-queries", () => ({
   usePurchasingSuppliers: () => ({ data: [], isLoading: false, isError: false }),
   useRecordPurchase: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useManagedSuppliers: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
+  useSupplierMutations: () => ({ create: { mutateAsync: vi.fn(), isPending: false }, update: { mutateAsync: vi.fn(), isPending: false }, setActive: { mutateAsync: vi.fn(), isPending: false } }),
+  usePurchaseHistory: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
+  usePurchaseDetail: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
 }))
 import {
   createAuthValue,
@@ -136,6 +140,28 @@ describe("authentication routes", () => {
     expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
     const navigation = screen.getByRole("navigation", { name: /workspace navigation/i })
     expect(within(navigation).queryByRole("link", { name: "Purchasing" })).not.toBeInTheDocument()
+  })
+
+  it.each(["owner", "manager", "employee"] as const)("allows %s to view Purchasing suppliers", async (role) => {
+    renderRoute("/purchasing/suppliers", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["purchasing"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: "Suppliers" })).toBeInTheDocument()
+    if (role === "employee") expect(screen.queryByRole("button", { name: /add supplier/i })).not.toBeInTheDocument()
+  })
+
+  it.each(["owner", "manager", "employee"] as const)("allows %s to view purchase history and details", async (role) => {
+    renderRoute("/purchasing/history", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["purchasing"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /purchase history/i })).toBeInTheDocument()
+    cleanup()
+    renderRoute("/purchasing/purchase-id", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role }, role, enabledModules: ["purchasing"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /purchase unavailable/i })).toBeInTheDocument()
+  })
+
+  it("denies cashier all Purchasing pages and redirects unauthenticated history", async () => {
+    renderRoute("/purchasing/history", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role: "cashier" }, role: "cashier", enabledModules: ["purchasing"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+    cleanup()
+    renderRoute("/purchasing/suppliers")
+    expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
   })
 
   it.each(["owner", "manager", "employee", "cashier"] as const)("allows %s to reach Sales when enabled", async (role) => {

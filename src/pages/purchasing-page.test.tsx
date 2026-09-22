@@ -62,6 +62,7 @@ describe("purchasing receiving page", () => {
       notes: null,
     })
     expect(await screen.findByText("PUR-000001")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /view purchase/i })).toHaveAttribute("href", "/purchasing/purchase-1")
   })
 
   it("searches by product name and SKU and lets the user select a supplier", async () => {

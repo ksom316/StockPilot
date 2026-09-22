@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase"
-import { PurchasingDataError, type RecordedPurchase, type RecordPurchaseInput, type Supplier } from "@/features/purchasing/purchasing-types"
+import { PurchasingDataError, type ManagedSupplier, type PurchaseDetail, type PurchaseItem, type PurchaseSummary, type RecordedPurchase, type RecordPurchaseInput, type Supplier, type SupplierInput } from "@/features/purchasing/purchasing-types"
+
+const purchaseSelect = "id,business_id,purchase_reference,received_at,supplier_name,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,purchase_items(id,product_name,product_sku,quantity_text:quantity::text,unit_cost_text:unit_cost::text,line_total_text:line_total::text)"
 
 function requireClient() {
   if (!supabase) throw new PurchasingDataError("Purchasing is not configured. Refresh and try again.")
@@ -22,6 +24,47 @@ export async function fetchSuppliers(businessId: string): Promise<Supplier[]> {
     phone: supplier.phone,
     email: supplier.email,
   }))
+}
+
+export async function fetchManagedSuppliers(businessId: string): Promise<ManagedSupplier[]> {
+  const { data, error } = await requireClient().from("suppliers").select("id,name,contact_name,phone,email,notes,is_active").eq("business_id", businessId).order("name")
+  if (error) throw new PurchasingDataError("We couldn't load suppliers. Please try again.", error.code)
+  return (data ?? []).map((row) => ({ id: row.id, name: row.name, contactName: row.contact_name, phone: row.phone, email: row.email, notes: row.notes, isActive: row.is_active }))
+}
+
+export async function createSupplier(businessId: string, input: SupplierInput) {
+  const { error } = await requireClient().from("suppliers").insert({ business_id: businessId, ...input })
+  if (error) throw new PurchasingDataError("We couldn't save this supplier. Check the details and try again.", error.code)
+}
+
+export async function updateSupplier(businessId: string, supplierId: string, input: SupplierInput) {
+  const { error } = await requireClient().from("suppliers").update(input).eq("business_id", businessId).eq("id", supplierId)
+  if (error) throw new PurchasingDataError("We couldn't update this supplier. Please try again.", error.code)
+}
+
+export async function setSupplierActive(businessId: string, supplierId: string, isActive: boolean) {
+  const { error } = await requireClient().from("suppliers").update({ is_active: isActive }).eq("business_id", businessId).eq("id", supplierId)
+  if (error) throw new PurchasingDataError("We couldn't update this supplier. Please try again.", error.code)
+}
+
+export async function fetchPurchases(businessId: string): Promise<PurchaseSummary[]> {
+  const { data, error } = await requireClient().from("purchases").select(purchaseSelect).eq("business_id", businessId).order("received_at", { ascending: false })
+  if (error) throw new PurchasingDataError("We couldn't load purchase history. Please try again.", error.code)
+  return (data ?? []).map((row) => {
+    const items = (row.purchase_items ?? []).map(mapPurchaseItem)
+    return { id: row.id, purchaseReference: row.purchase_reference, receivedAt: row.received_at, supplierName: row.supplier_name, subtotal: row.subtotal_text, total: row.total_text, notes: row.notes, itemCount: items.length, items: items.map(({ productName, productSku }) => ({ productName, productSku })) }
+  })
+}
+
+export async function fetchPurchase(businessId: string, purchaseId: string): Promise<PurchaseDetail | null> {
+  const { data, error } = await requireClient().from("purchases").select(purchaseSelect).eq("business_id", businessId).eq("id", purchaseId).maybeSingle()
+  if (error) throw new PurchasingDataError("We couldn't load this purchase. Please try again.", error.code)
+  if (!data) return null
+  return { id: data.id, purchaseReference: data.purchase_reference, receivedAt: data.received_at, supplierName: data.supplier_name, subtotal: data.subtotal_text, total: data.total_text, notes: data.notes, items: (data.purchase_items ?? []).map(mapPurchaseItem) }
+}
+
+function mapPurchaseItem(row: { id: string; product_name: string; product_sku: string | null; quantity_text: string; unit_cost_text: string; line_total_text: string }): PurchaseItem {
+  return { id: row.id, productName: row.product_name, productSku: row.product_sku, quantity: row.quantity_text, unitCost: row.unit_cost_text, lineTotal: row.line_total_text }
 }
 
 export async function recordPurchase(input: RecordPurchaseInput): Promise<RecordedPurchase> {

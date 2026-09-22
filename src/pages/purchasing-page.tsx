@@ -3,6 +3,7 @@ import { useMemo, useRef, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { PurchasingSectionNav } from "@/components/purchasing/purchasing-section-nav"
 import { useBusiness } from "@/features/business/business-context"
 import { formatQuantity } from "@/features/inventory/inventory-format"
 import { parseDatabaseQuantity, parseQuantity } from "@/features/inventory/inventory-decimal"
@@ -193,13 +194,14 @@ export function PurchasingPage() {
 
   return (
     <section className="space-y-6">
+      <PurchasingSectionNav />
       <header>
         <p className="text-sm font-medium text-primary">Purchasing</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Receive stock</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">Record products that have arrived. Stock and latest received costs update when this receipt is saved.</p>
       </header>
 
-      {success && <div aria-live="polite" className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/25 bg-primary/5 p-4" role="status"><div><p className="font-semibold">Receipt recorded</p><p className="mt-1 text-sm">Reference: <span className="font-medium">{success.purchase_reference}</span></p></div><div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link to="/inventory">View inventory</Link></Button><Button onClick={() => setSuccess(null)} size="sm">Receive more stock</Button></div></div>}
+      {success && <div aria-live="polite" className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/25 bg-primary/5 p-4" role="status"><div><p className="font-semibold">Receipt recorded</p><p className="mt-1 text-sm">Reference: <span className="font-medium">{success.purchase_reference}</span></p></div><div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link to={`/purchasing/${encodeURIComponent(success.id)}`}>View purchase</Link></Button><Button asChild size="sm" variant="outline"><Link to="/inventory">View inventory</Link></Button><Button onClick={() => setSuccess(null)} size="sm">Receive more stock</Button></div></div>}
       {formError && <p aria-live="assertive" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{formError}</p>}
       {statusMessage && <p aria-live="polite" className="rounded-lg border border-border bg-card p-3 text-sm" role="status">{statusMessage}</p>}
 
