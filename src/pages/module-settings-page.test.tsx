@@ -35,6 +35,14 @@ function renderSettings(props: Parameters<typeof SettingsFixture>[0] = {}) {
 }
 
 describe("ModuleSettingsPage", () => {
+  it("lets the owner choose a curated business icon", async () => {
+    const user = userEvent.setup()
+    const setBusinessIcon = vi.fn().mockResolvedValue(undefined)
+    render(<TestAuthProvider value={createAuthValue({ user: testUser, session: testSession })}><BusinessContext.Provider value={createBusinessValue({ business: testBusiness, membership: testMembership, role: "owner", onboardingRequired: false, setBusinessIcon })}><ModuleSettingsPage /></BusinessContext.Provider></TestAuthProvider>)
+    await user.click(screen.getByRole("button", { name: "Warehouse" }))
+    expect(setBusinessIcon).toHaveBeenCalledWith("warehouse")
+  })
+
   it("keeps core Inventory always enabled without a disable control and lists every optional module", () => {
     renderSettings()
     const core = screen.getByRole("region", { name: /core/i })
@@ -116,6 +124,7 @@ describe("module state integration", () => {
     render(<ModuleRoutingFixture />)
     await user.click(screen.getByRole("switch", { name: "Sales module" }))
     const navigation = screen.getByRole("navigation", { name: /workspace navigation/i })
+    expect(within(navigation).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings/modules")
     expect(within(navigation).getByText("Sales")).toBeInTheDocument()
     expect(within(navigation).getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/sales")
     await user.click(screen.getByRole("link", { name: "Dashboard" }))

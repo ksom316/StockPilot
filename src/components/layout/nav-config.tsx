@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   Sparkles,
+  Settings2,
   Store,
   Target,
   Truck,
@@ -80,6 +81,7 @@ export function buildNavGroups(enabledModules: readonly OptionalModule[], role: 
       label: "Organization",
       items: [
         ...(has("team") && roleIn(managerRoles) ? [{ label: "Team", to: "/team", icon: UsersRound }] : []),
+        { label: "Settings", to: "/settings/modules", icon: Settings2 },
       ],
     },
   ]

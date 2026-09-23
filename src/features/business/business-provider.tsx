@@ -8,6 +8,7 @@ import {
   type Membership,
 } from "@/features/business/business-context"
 import type { OptionalModule } from "@/features/business/modules"
+import type { BusinessIconId } from "@/features/business/business-icons"
 import { useAuth } from "@/features/auth/auth-context"
 import { supabase } from "@/lib/supabase"
 
@@ -41,7 +42,7 @@ export function BusinessProvider({ children }: PropsWithChildren) {
 
     const { data: membershipData, error: membershipError } = await supabase
       .from("business_members")
-      .select("id, business_id, role, status, businesses(id, name, business_type, currency, timezone)")
+      .select("id, business_id, role, status, businesses(id, name, business_type, currency, timezone, icon_id)")
       .eq("user_id", user.id)
       .eq("status", "active")
       .limit(2)
@@ -72,6 +73,7 @@ export function BusinessProvider({ children }: PropsWithChildren) {
       business_type: string | null
       currency: string
       timezone: string
+      icon_id?: BusinessIconId | null
     }
     const { data: moduleData, error: moduleError } = await supabase
       .from("business_modules")
@@ -94,6 +96,7 @@ export function BusinessProvider({ children }: PropsWithChildren) {
         businessType: relatedBusiness.business_type,
         currency: relatedBusiness.currency,
         timezone: relatedBusiness.timezone,
+        iconId: relatedBusiness.icon_id ?? "store",
       },
       membership: {
         id: activeMembership.id,
@@ -150,6 +153,15 @@ export function BusinessProvider({ children }: PropsWithChildren) {
     await resolveBusiness()
   }, [resolveBusiness, resolvedState, user])
 
+  const setBusinessIcon = useCallback(async (iconId: BusinessIconId) => {
+    const currentBusiness = resolvedState.business
+    if (!user || !supabase || !currentBusiness) throw new Error("Your workspace is unavailable. Refresh and try again.")
+    if (resolvedState.membership?.role !== "owner") throw new Error("Only the business owner can change the business icon.")
+    const { error } = await supabase.from("businesses").update({ icon_id: iconId }).eq("id", currentBusiness.id)
+    if (error) throw new Error("We couldn't update the business icon. Confirm your owner access and try again.")
+    await resolveBusiness()
+  }, [resolveBusiness, resolvedState, user])
+
   const isLoading = isAuthLoading || Boolean(user && state.resolvedUserId !== user.id)
   const value = useMemo<BusinessContextValue>(() => ({
     business: resolvedState.business,
@@ -162,7 +174,8 @@ export function BusinessProvider({ children }: PropsWithChildren) {
     refresh: resolveBusiness,
     completeOnboarding,
     setModuleEnabled,
-  }), [completeOnboarding, isLoading, resolveBusiness, resolvedState, setModuleEnabled, user])
+    setBusinessIcon,
+  }), [completeOnboarding, isLoading, resolveBusiness, resolvedState, setBusinessIcon, setModuleEnabled, user])
 
   return <BusinessContext.Provider value={value}>{children}</BusinessContext.Provider>
 }

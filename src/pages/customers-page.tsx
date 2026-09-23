@@ -1,8 +1,11 @@
 import { useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 
+import { PageHeader } from "@/components/layout/page-header"
 import { DialogShell } from "@/components/ui/dialog-shell"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state"
 import { useBusiness } from "@/features/business/business-context"
 import { filterCustomers, findPossibleDuplicate, type CustomerStatusFilter } from "@/features/customers/customer-filters"
 import { useCustomerMutations, useCustomers } from "@/features/customers/customer-queries"
@@ -94,10 +97,7 @@ export function CustomersPage() {
   }
 
   return <section className="space-y-6">
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div><p className="text-sm font-medium text-primary">Workspace</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Customers</h1><p className="mt-2 max-w-2xl text-muted-foreground">Keep customer contact details together. Duplicate contact details are allowed; a warning never prevents creating a separate record.</p></div>
-      <Button onClick={beginCreate}>Add customer</Button>
-    </header>
+    <PageHeader actions={<Button onClick={beginCreate}>Add customer</Button>} description="Keep customer contact details together. Duplicate contact details are allowed; a warning never prevents creating a separate record." eyebrow="Workspace" title="Customers" />
 
     {status && <p aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-sm" role="status">{status}</p>}
     {error && !formOpen && !lifecycleTarget && <p className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{error}</p>}
@@ -107,9 +107,9 @@ export function CustomersPage() {
       {canManage && <label className="space-y-1.5 text-sm"><span>Status</span><select className={inputClass} onChange={(event) => setStatusFilter(event.target.value as CustomerStatusFilter)} value={statusFilter}><option value="active">Active</option><option value="inactive">Inactive</option><option value="all">All customers</option></select></label>}
     </div>
 
-    {query.isLoading && <p className="rounded-xl border p-8 text-center text-muted-foreground" role="status">Loading customers…</p>}
-    {query.isError && <div className="rounded-xl border border-destructive/25 p-8 text-center" role="alert"><p className="text-sm text-destructive">Customers are unavailable. Check that the Customers module is enabled and try again.</p><Button className="mt-3" onClick={() => void query.refetch()} variant="outline">Try again</Button></div>}
-    {!query.isLoading && !query.isError && filtered.length === 0 && <div className="rounded-xl border border-dashed p-8 text-center"><h2 className="font-semibold">{customers.length ? "No matching customers" : "No customers yet"}</h2><p className="mt-1 text-sm text-muted-foreground">{customers.length ? "Adjust your search or status filter." : "Customers you add will appear here."}</p></div>}
+    {query.isLoading && <LoadingState className="rounded-xl border bg-card p-8 text-center" label="Loading customers…" />}
+    {query.isError && <ErrorState onRetry={() => void query.refetch()} title="Customers unavailable">Check that the Customers module is enabled and try again.</ErrorState>}
+    {!query.isLoading && !query.isError && filtered.length === 0 && <EmptyState description={customers.length ? "Adjust your search or status filter." : "Customers you add will appear here."} title={customers.length ? "No matching customers" : "No customers yet"} />}
 
     {!query.isLoading && !query.isError && filtered.length > 0 && <>
       <div className="hidden overflow-x-auto rounded-xl border bg-card md:block"><table className="w-full text-left"><caption className="sr-only">Customer directory</caption><thead className="border-b bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground"><tr>{["Name", "Phone", "Email", ...(canManage ? ["Status", "Actions"] : [])].map((label) => <th className="px-4 py-3 font-medium" key={label}>{label}</th>)}</tr></thead><tbody className="divide-y">{filtered.map((customer) => <tr key={customer.id}><td className="max-w-64 break-words px-4 py-3 font-medium">{customer.name}</td><td className="px-4 py-3">{customer.phone ?? <span className="text-muted-foreground">—</span>}</td><td className="max-w-64 break-all px-4 py-3">{customer.email ?? <span className="text-muted-foreground">—</span>}</td>{canManage && <><td className="px-4 py-3"><StatusBadge active={customer.isActive} /></td><td className="px-4 py-3"><CustomerActions customer={customer as ManagedCustomer} onDetails={() => setSelected(customer as ManagedCustomer)} onEdit={() => beginEdit(customer as ManagedCustomer)} onLifecycle={() => { setLifecycleTarget(customer as ManagedCustomer); setError("") }} /></td></>}</tr>)}</tbody></table></div>
@@ -143,6 +143,6 @@ function CustomerActions({ customer, onDetails, onEdit, onLifecycle }: { custome
   return <div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link aria-label={`View profile for ${customer.name}`} to={`/customers/${customer.id}`}>Profile</Link></Button><Button aria-label={`View details for ${customer.name}`} onClick={onDetails} size="sm" variant="outline">Details</Button><Button aria-label={`Edit ${customer.name}`} onClick={onEdit} size="sm" variant="outline">Edit</Button><Button aria-label={`${customer.isActive ? "Deactivate" : "Reactivate"} ${customer.name}`} onClick={onLifecycle} size="sm" variant="outline">{customer.isActive ? "Deactivate" : "Reactivate"}</Button></div>
 }
 
-function StatusBadge({ active }: { active: boolean }) { return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{active ? "Active" : "Inactive"}</span> }
+function StatusBadge({ active }: { active: boolean }) { return <Badge variant={active ? "success" : "neutral"}>{active ? "Active" : "Inactive"}</Badge> }
 function Detail({ label, children }: { label: string; children: React.ReactNode }) { return <div className="min-w-0"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium">{children}</dd></div> }
 function formatDate(value: string) { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value)) }

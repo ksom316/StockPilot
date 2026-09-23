@@ -195,7 +195,7 @@ export function PurchasingPage() {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-7">
       <PurchasingSectionNav />
       <PageHeader description="Record products that have arrived. Stock and latest received costs update when this receipt is saved." eyebrow="Purchasing" title="Receive stock" />
 

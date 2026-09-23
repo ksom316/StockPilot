@@ -86,7 +86,7 @@ export function FinanceExpensesPage() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "We couldn't save this category.") }
   }
 
-  return <section className="space-y-6">
+  return <section className="space-y-7">
     <FinanceSectionNav />
     <PageHeader actions={<Button disabled={!activeCategories.length} onClick={() => beginForm()}>Add expense</Button>} description="Track operating costs such as rent, utilities, transport, marketing, or internet. Stock bought for resale belongs in Purchasing." eyebrow="Finance" title="Expenses" />
     {status && <p aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-sm" role="status">{status}</p>}

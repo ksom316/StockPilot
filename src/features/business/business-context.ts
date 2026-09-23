@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react"
 
 import type { OptionalModule } from "@/features/business/modules"
+import type { BusinessIconId } from "@/features/business/business-icons"
 
 export interface Business {
   id: string
@@ -8,6 +9,7 @@ export interface Business {
   businessType: string | null
   currency: string
   timezone: string
+  iconId: BusinessIconId
 }
 
 export interface Membership {
@@ -34,6 +36,7 @@ export interface BusinessContextValue {
   refresh: () => Promise<void>
   completeOnboarding: (input: CompleteOnboardingInput) => Promise<void>
   setModuleEnabled: (module: OptionalModule, enabled: boolean) => Promise<void>
+  setBusinessIcon: (iconId: BusinessIconId) => Promise<void>
 }
 
 export const BusinessContext = createContext<BusinessContextValue | undefined>(undefined)

@@ -3,9 +3,12 @@ import { useState } from "react"
 
 import { useBusiness } from "@/features/business/business-context"
 import { optionalModules } from "@/features/business/modules"
+import { PageHeader } from "@/components/layout/page-header"
+import { Badge } from "@/components/ui/badge"
+import { BusinessIcon, businessIconOptions, type BusinessIconId } from "@/features/business/business-icons"
 
 export function ModuleSettingsPage() {
-  const { business, enabledModules, isLoading, error, role, setModuleEnabled } = useBusiness()
+  const { business, enabledModules, isLoading, error, role, setModuleEnabled, setBusinessIcon } = useBusiness()
   const [pendingModule, setPendingModule] = useState<string | null>(null)
   const [updateError, setUpdateError] = useState("")
   const canManage = role === "owner"
@@ -23,22 +26,43 @@ export function ModuleSettingsPage() {
     }
   }
 
+  const chooseBusinessIcon = async (iconId: BusinessIconId) => {
+    if (!canManage || pendingModule || iconId === business?.iconId) return
+    setPendingModule("business-icon")
+    setUpdateError("")
+    try {
+      await setBusinessIcon(iconId)
+    } catch (cause) {
+      setUpdateError(cause instanceof Error ? cause.message : "We couldn't update the business icon. Please try again.")
+    } finally {
+      setPendingModule(null)
+    }
+  }
+
   if (isLoading) return <p className="flex min-h-56 items-center justify-center text-sm text-muted-foreground" role="status">Loading module settings…</p>
   if (error) return <div className="rounded-xl border border-destructive/25 bg-card p-6 text-center" role="alert"><h1 className="text-xl font-semibold">Module settings unavailable</h1><p className="mt-2 text-muted-foreground">{error}</p></div>
   if (!business) return <div className="rounded-xl border border-border bg-card p-6 text-center"><h1 className="text-xl font-semibold">Workspace unavailable</h1><p className="mt-2 text-muted-foreground">Sign in to a business workspace to view its modules.</p></div>
 
   return (
     <section className="mx-auto max-w-4xl space-y-6">
-      <header>
-        <p className="text-sm font-medium text-primary">Workspace settings</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Modules</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">Choose which optional tools are enabled for {business.name}. Turning a module off hides it from navigation; it does not delete business data.</p>
-      </header>
+      <PageHeader description={`Choose which optional tools are enabled for ${business.name}. Turning a module off hides it from navigation; it does not delete business data.`} eyebrow="Workspace settings" title="Modules" />
+
+      <section aria-labelledby="business-identity-title" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div><h2 className="text-lg font-semibold" id="business-identity-title">Business identity</h2><p className="mt-1 text-sm text-muted-foreground">Choose a built-in icon for this business workspace.</p></div>
+        <div aria-label="Business icon choices" className="mt-4 flex flex-wrap gap-2" role="group">
+          {businessIconOptions.map((option) => (
+            <button aria-label={option.label} aria-pressed={business.iconId === option.id} className={`flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium ${business.iconId === option.id ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-muted"}`} disabled={!canManage || Boolean(pendingModule)} key={option.id} onClick={() => void chooseBusinessIcon(option.id)} type="button">
+              <BusinessIcon className="size-4" id={option.id} />{option.label}
+            </button>
+          ))}
+        </div>
+        {!canManage && <p className="mt-4 text-sm text-muted-foreground">Only the business owner can change the business icon.</p>}
+      </section>
 
       <section aria-labelledby="core-modules-title" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div><h2 className="text-lg font-semibold" id="core-modules-title">Core</h2><p className="mt-1 text-sm text-muted-foreground">Always available to this workspace.</p></div>
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">Core</span>
+          <Badge variant="primary">Core</Badge>
         </div>
         <div className="mt-4 flex items-start gap-3 rounded-lg border border-border p-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><PackageCheck aria-hidden="true" className="size-5" /></span>

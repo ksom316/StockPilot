@@ -2,6 +2,9 @@ import { ChevronLeft, ChevronRight, PackageSearch } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { PageHeader } from "@/components/layout/page-header"
+import { StatCard } from "@/components/ui/stat-card"
 import { useBusiness } from "@/features/business/business-context"
 import { formatEstimatedDays, formatSmartDateRange, formatSmartQuantity } from "@/features/smart-inventory/smart-inventory-format"
 import { SMART_INVENTORY_PAGE_SIZE, useSmartInventorySnapshot } from "@/features/smart-inventory/smart-inventory-queries"
@@ -21,7 +24,7 @@ function StockState({ state }: { state: SmartInventoryStockState }) {
     : state === "LOW_STOCK"
       ? "border-amber-300 bg-amber-50 text-amber-800"
       : "border-primary/25 bg-primary/5 text-primary"
-  return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${classes}`}>{stockLabels[state]}</span>
+  return <Badge className={classes} variant="outline">{stockLabels[state]}</Badge>
 }
 
 function salesExplanation(product: SmartInventoryProduct, windowLabel: string) {
@@ -59,7 +62,7 @@ function ProductInsight({ product, windowLabel }: { product: SmartInventoryProdu
   const movement = movementExplanation(product)
 
   return (
-    <article className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <article className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="truncate font-semibold">{product.productName}</h2>
@@ -116,11 +119,7 @@ export function InventoryInsightsPage() {
 
   return (
     <section aria-labelledby="smart-inventory-heading" className="space-y-6">
-      <div>
-        <p className="text-sm font-medium text-primary">Deterministic inventory intelligence</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight" id="smart-inventory-heading">Smart Inventory</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">Use inventory and Recorded Sales history to understand stock attention and recent product activity.</p>
-      </div>
+      <PageHeader description="Use inventory and Recorded Sales history to understand stock attention and recent product activity." eyebrow="Deterministic inventory intelligence" title="Smart Inventory" titleId="smart-inventory-heading" />
 
       {query.isLoading && <div className="flex min-h-56 items-center justify-center rounded-xl border border-border bg-card" role="status"><span aria-hidden="true" className="mr-3 size-5 animate-spin rounded-full border-2 border-border border-t-primary" />Loading Smart Inventory…</div>}
       {query.isError && !query.isLoading && <div className="rounded-xl border border-destructive/25 bg-card p-8 text-center" role="alert"><h2 className="text-lg font-semibold">Smart Inventory unavailable</h2><p className="mt-2 text-muted-foreground">We couldn't load current inventory intelligence. Please try again.</p><Button className="mt-5" onClick={() => void query.refetch()} variant="outline">Try again</Button></div>}
@@ -133,9 +132,9 @@ export function InventoryInsightsPage() {
               <p className="text-sm text-muted-foreground">{snapshot.pagination.totalItems} active {snapshot.pagination.totalItems === 1 ? "product" : "products"} · Page {snapshot.pagination.page} of {Math.max(snapshot.pagination.totalPages, 1)}</p>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3"><p className="text-xs text-muted-foreground">Out of Stock</p><p className="mt-1 text-xl font-semibold">{outOfStock}</p></div>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3"><p className="text-xs text-muted-foreground">Low Stock</p><p className="mt-1 text-xl font-semibold">{lowStock}</p></div>
-              <div className="rounded-lg border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Insufficient History</p><p className="mt-1 text-xl font-semibold">{insufficient}</p></div>
+              <StatCard label="Out of Stock" tone="destructive" value={outOfStock} />
+              <StatCard label="Low Stock" tone="warning" value={lowStock} />
+              <StatCard help="30-day observation window" label="Insufficient History" value={insufficient} />
             </div>
           </div>
 

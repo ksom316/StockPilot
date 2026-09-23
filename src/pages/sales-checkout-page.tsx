@@ -207,7 +207,7 @@ export function SalesCheckoutPage() {
   const retryProducts = () => void products.refetch()
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-7">
       <SalesSectionNav />
       <PageHeader description="Choose products, review the transaction prices, and record the sale. Stock updates when the sale is saved." eyebrow="Sales" title="New sale" />
 

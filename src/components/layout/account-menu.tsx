@@ -1,17 +1,21 @@
-import { LogOut, Settings2, User } from "lucide-react"
+import { LogOut, Settings2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
+import { ProfileAvatarIcon, profileAvatarOptions, type ProfileAvatarId } from "@/features/profile/profile-icons"
 
 interface AccountMenuProps {
   label: string
   onSignOut: () => void
   isSigningOut: boolean
+  avatarId: ProfileAvatarId
+  isUpdatingAvatar: boolean
+  onAvatarChange: (avatarId: ProfileAvatarId) => void
 }
 
 /** Compact account menu housing settings access and sign-out, used in the top header. */
-export function AccountMenu({ label, onSignOut, isSigningOut }: AccountMenuProps) {
+export function AccountMenu({ label, onSignOut, isSigningOut, avatarId, isUpdatingAvatar, onAvatarChange }: AccountMenuProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -44,7 +48,7 @@ export function AccountMenu({ label, onSignOut, isSigningOut }: AccountMenuProps
         onClick={() => setOpen((value) => !value)}
         type="button"
       >
-        <User aria-hidden="true" className="size-4" />
+        <ProfileAvatarIcon className="size-4" id={avatarId} />
       </button>
       {open && (
         <div
@@ -52,6 +56,24 @@ export function AccountMenu({ label, onSignOut, isSigningOut }: AccountMenuProps
           role="menu"
         >
           <p className="truncate px-2.5 py-1.5 text-xs text-muted-foreground" title={label}>{label}</p>
+          <div className="border-b border-border px-2.5 pb-2 pt-1">
+            <p className="mb-1.5 text-xs font-medium text-foreground">Profile icon</p>
+            <div className="flex gap-1" role="group" aria-label="Profile icon choices">
+              {profileAvatarOptions.map((option) => (
+                <button
+                  aria-label={option.label}
+                  aria-pressed={avatarId === option.id}
+                  className={cn("flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted", avatarId === option.id && "bg-primary/10 text-primary")}
+                  disabled={isUpdatingAvatar}
+                  key={option.id}
+                  onClick={() => onAvatarChange(option.id)}
+                  type="button"
+                >
+                  <ProfileAvatarIcon className="size-4" id={option.id} />
+                </button>
+              ))}
+            </div>
+          </div>
           <Link
             className={cn(
               "flex items-center gap-2 rounded-sm px-2.5 py-2 text-sm text-foreground outline-none hover:bg-muted focus-visible:bg-muted",
