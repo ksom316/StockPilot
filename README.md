@@ -24,6 +24,35 @@ cp .env.example .env.local
 npm run dev
 ```
 
+### Local end-to-end checks
+
+Playwright coverage is intentionally Chromium-only and uses a dedicated local Supabase user. It does not use production credentials or call a live AI provider. Start local Supabase first, then expose the local service-role key only to the test process:
+
+```powershell
+npx supabase start
+$status = npx supabase status -o json | ConvertFrom-Json
+$env:VITE_SUPABASE_URL = $status.API_URL
+$env:VITE_SUPABASE_ANON_KEY = $status.ANON_KEY
+$env:STOCKPILOT_E2E_SUPABASE_URL = $status.API_URL
+$env:STOCKPILOT_E2E_SERVICE_ROLE_KEY = $status.SERVICE_ROLE_KEY
+$env:STOCKPILOT_E2E_EMAIL = "stockpilot-e2e@example.test"
+$env:STOCKPILOT_E2E_PASSWORD = "use-a-local-only-password"
+npm run test:e2e:install
+npm run test:e2e
+```
+
+The E2E setup creates or refreshes only the explicitly supplied local test identity. Keep those values out of committed files and never point them at a production Supabase project.
+
+For database reproducibility, use `npx supabase db lint` and `npx supabase test db`. `npx supabase db reset --local` recreates the local database and is destructive to local data, so run it only in a disposable local environment.
+
+Edge Function tests run with the existing Vitest setup, for example:
+
+```powershell
+npx vitest run supabase/functions/ai-analyst/ai-analyst.test.ts supabase/functions/opportunity-advisor/opportunity-advisor.test.ts
+```
+
+The Vercel rewrite in `vercel.json` preserves client-side React Router deep links by serving the SPA entry point for application routes.
+
 Add your Supabase project URL and publishable/anonymous key to `.env.local`. The placeholder application can run without credentials; Supabase-backed features should check the exported configuration state before use.
 
 ## Quality checks
