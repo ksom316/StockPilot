@@ -12,7 +12,7 @@ import { BusinessProvider } from "@/features/business/business-provider"
 import { useBusiness } from "@/features/business/business-context"
 
 function authValue(user: User): AuthContextValue {
-  return { user, session: null, isLoading: false, initializationError: null, retryInitialization: vi.fn(), signUp: vi.fn(), signIn: vi.fn(), signOut: vi.fn() }
+  return { user, session: null, isLoading: false, initializationError: null, retryInitialization: vi.fn(), signUp: vi.fn(), signIn: vi.fn(), requestPasswordReset: vi.fn(), updatePassword: vi.fn(), signOut: vi.fn() }
 }
 
 function Probe() {

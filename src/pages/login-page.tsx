@@ -80,6 +80,9 @@ export function LoginPage() {
           type="password"
           value={password}
         />
+        <div className="-mt-2 text-right text-sm">
+          <Link className="font-medium text-primary hover:underline" to="/forgot-password">Forgot password?</Link>
+        </div>
         <Button className="h-11 w-full" disabled={isSubmitting} type="submit">
           {isSubmitting ? "Signing in…" : "Sign in"}
         </Button>

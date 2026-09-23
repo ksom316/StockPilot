@@ -22,4 +22,14 @@ describe("LoginPage", () => {
     expect(screen.getByText("Enter your password.")).toBeInTheDocument()
     expect(signIn).not.toHaveBeenCalled()
   })
+
+  it("links to password recovery", () => {
+    render(
+      <TestAuthProvider value={createAuthValue()}>
+        <MemoryRouter><LoginPage /></MemoryRouter>
+      </TestAuthProvider>,
+    )
+
+    expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", "/forgot-password")
+  })
 })

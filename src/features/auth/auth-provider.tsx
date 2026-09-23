@@ -88,6 +88,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (error) throw error
   }, [])
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    if (!supabase) throw new Error(configurationError)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) throw error
+  }, [])
+
+  const updatePassword = useCallback(async (password: string) => {
+    if (!supabase) throw new Error(configurationError)
+
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+  }, [])
+
   const signOut = useCallback(async () => {
     if (!supabase) throw new Error(configurationError)
 
@@ -96,8 +112,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user: session?.user ?? null, session, isLoading, initializationError, retryInitialization, signUp, signIn, signOut }),
-    [initializationError, isLoading, retryInitialization, session, signIn, signOut, signUp],
+    () => ({ user: session?.user ?? null, session, isLoading, initializationError, retryInitialization, signUp, signIn, requestPasswordReset, updatePassword, signOut }),
+    [initializationError, isLoading, requestPasswordReset, retryInitialization, session, signIn, signOut, signUp, updatePassword],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
