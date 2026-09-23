@@ -40,13 +40,13 @@ export function DashboardPage() {
       title={`Welcome to ${business.name}`}
     />
 
-    <section aria-label="Dashboard date range" className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-4 text-sm">
+    <section aria-label="Dashboard date range" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm">
       <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Period</span><select className={inputClass} onChange={(event) => setPeriod(event.target.value as FinancePeriod)} value={period}><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="custom">Custom</option></select></label>
       {period === "custom" && <>
         <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Start date</span><input className={inputClass} onChange={(event) => setCustomStart(event.target.value)} type="date" value={customStart} /></label>
         <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">End date</span><input className={inputClass} onChange={(event) => setCustomEnd(event.target.value)} type="date" value={customEnd} /></label>
       </>}
-      {range && <span className="text-muted-foreground">Business dates: {range.startDate} – {range.endDate}</span>}
+      {range && <span className="ml-auto text-muted-foreground">Business dates: <span className="font-medium text-foreground">{range.startDate} – {range.endDate}</span></span>}
     </section>
     {period === "custom" && !range && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Choose valid dates in order. Custom ranges can include at most 366 calendar days.</p>}
     {period !== "custom" && !range && <p className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">The workspace timezone is invalid, so this period cannot be loaded. Contact your workspace owner.</p>}
@@ -107,13 +107,22 @@ export function DashboardPage() {
 
 const inputClass = "h-9 rounded-md border border-border bg-background px-2.5 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
 
+const toneCardClass = {
+  neutral: "border-border",
+  warning: "border-warning/30 bg-warning/[0.04]",
+  destructive: "border-destructive/25 bg-destructive/[0.04]",
+} as const
+
 function CountCard({ label, value, to, tone = "neutral" }: { label: string; value: number; to: string; tone?: "neutral" | "warning" | "destructive" }) {
-  const toneClass = tone === "warning" ? "text-warning-foreground" : tone === "destructive" ? "text-destructive" : "text-foreground"
-  return <Link aria-label={`${label}: ${value}`} className="rounded-lg border border-border bg-card p-4 outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring" to={to}><span className="block text-sm text-muted-foreground">{label}</span><span className={`mt-1 block text-2xl font-semibold tabular-nums ${toneClass}`}>{value.toLocaleString()}</span></Link>
+  const toneTextClass = tone === "warning" ? "text-warning-foreground" : tone === "destructive" ? "text-destructive" : "text-foreground"
+  return <Link aria-label={`${label}: ${value}`} className={`group rounded-lg border bg-card p-4 outline-none transition-all duration-150 hover:border-border-strong hover:shadow-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${toneCardClass[tone]}`} to={to}>
+    <span className="flex items-center justify-between text-sm text-muted-foreground">{label}<span aria-hidden="true" className="text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100">→</span></span>
+    <span className={`mt-1.5 block text-2xl font-semibold tabular-nums ${toneTextClass}`}>{value.toLocaleString()}</span>
+  </Link>
 }
 
 function Metric({ label, value, help }: { label: string; value: string; help?: string }) {
-  return <div className="min-w-0 rounded-lg border border-border bg-card p-4"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-1 break-all text-2xl font-semibold tabular-nums">{value}</dd>{help && <p className="mt-1 text-xs text-muted-foreground">{help}</p>}</div>
+  return <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-xs"><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt><dd className="mt-2 break-all text-2xl font-semibold tabular-nums">{value}</dd>{help && <p className="mt-1.5 text-xs text-muted-foreground">{help}</p>}</div>
 }
 
 function TopProducts({ products }: { products: { productId: string; productName: string; productSku: string; unitsSold: string }[] }) {

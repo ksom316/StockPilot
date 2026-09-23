@@ -12,7 +12,7 @@ export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>)
 }
 
 export function TableHead({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn("border-b border-border bg-muted/60 text-xs font-medium uppercase tracking-wide text-muted-foreground", className)} {...props} />
+  return <thead className={cn("border-b border-border bg-muted/50 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground", className)} {...props} />
 }
 
 export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {

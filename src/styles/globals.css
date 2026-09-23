@@ -131,6 +131,29 @@ textarea {
   transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.75;
+}
+
+select {
+  cursor: pointer;
+}
+
+input:hover:not(:disabled):not(:focus-visible),
+select:hover:not(:disabled):not(:focus-visible),
+textarea:hover:not(:disabled):not(:focus-visible) {
+  border-color: var(--border-strong);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;

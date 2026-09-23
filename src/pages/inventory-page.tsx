@@ -84,7 +84,7 @@ export function InventoryPage() {
 
       {successMessage && <div aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary" role="status">{successMessage}</div>}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
         <label className="relative block flex-1 basis-56">
           <span className="sr-only">Search products</span>
           <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

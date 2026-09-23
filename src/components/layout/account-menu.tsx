@@ -37,7 +37,10 @@ export function AccountMenu({ label, onSignOut, isSigningOut }: AccountMenuProps
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={`Account menu for ${label}`}
-        className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground outline-none transition-colors hover:bg-border focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          "flex size-9 items-center justify-center rounded-full border text-muted-foreground outline-none transition-colors duration-150 hover:border-border-strong hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          open ? "border-border-strong bg-muted text-foreground" : "border-border bg-background",
+        )}
         onClick={() => setOpen((value) => !value)}
         type="button"
       >
@@ -45,7 +48,7 @@ export function AccountMenu({ label, onSignOut, isSigningOut }: AccountMenuProps
       </button>
       {open && (
         <div
-          className="absolute right-0 z-40 mt-2 w-56 rounded-md border border-border bg-card p-1 shadow-md"
+          className="animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 absolute right-0 z-40 mt-2 w-56 origin-top-right rounded-md border border-border bg-card p-1 shadow-md duration-150"
           role="menu"
         >
           <p className="truncate px-2.5 py-1.5 text-xs text-muted-foreground" title={label}>{label}</p>

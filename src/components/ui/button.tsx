@@ -5,15 +5,15 @@ import type { ButtonHTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium outline-none transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:active:translate-y-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
-        outline: "border border-border bg-background hover:bg-muted",
+        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary-hover",
+        outline: "border border-border bg-background hover:border-border-strong hover:bg-muted",
         secondary: "bg-secondary text-secondary-foreground hover:bg-muted",
         ghost: "hover:bg-muted",
-        destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
+        destructive: "bg-destructive text-destructive-foreground shadow-xs hover:opacity-90",
       },
       size: {
         default: "h-9 px-4 py-2",

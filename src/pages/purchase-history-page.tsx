@@ -49,7 +49,7 @@ export function PurchaseHistoryPage() {
       <PurchasingSectionNav />
       <PageHeader actions={<Button asChild><Link to="/purchasing">Receive stock</Link></Button>} description="Review received stock and its recorded costs." eyebrow="Purchasing" title="Purchase history" />
 
-      <div className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-[minmax(0,1fr)_repeat(2,minmax(150px,0.35fr))_auto] sm:items-end">
+      <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[minmax(0,1fr)_repeat(2,minmax(150px,0.35fr))_auto] sm:items-end">
         <label className="space-y-1.5 text-sm"><span>Search purchases</span><input className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setQ(event.target.value.slice(0, 120))} placeholder="Reference, supplier, product or SKU" type="search" value={q} /></label>
         <label className="space-y-1.5 text-sm"><span>From date</span><input className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setFrom(event.target.value)} type="date" value={safeFrom} /></label>
         <label className="space-y-1.5 text-sm"><span>To date</span><input className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setTo(event.target.value)} type="date" value={safeTo} /></label>

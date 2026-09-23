@@ -24,13 +24,13 @@ export function FinanceOverviewPage() {
     <FinanceSectionNav />
     <PageHeader actions={<Button asChild variant="outline"><Link to="/finance/expenses">Manage Expenses</Link></Button>} description="Recorded sales, operating expenses, and estimated profitability for your business." eyebrow="Finance" title="Overview" />
 
-    <section aria-label="Financial period" className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-4 text-sm">
+    <section aria-label="Financial period" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm">
       <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Period</span><select className={inputClass} onChange={(event) => setPeriod(event.target.value as FinancePeriod)} value={period}><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="custom">Custom</option></select></label>
       {period === "custom" && <>
         <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Start date</span><input className={inputClass} onChange={(event) => setCustomStart(event.target.value)} type="date" value={customStart} /></label>
         <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">End date</span><input className={inputClass} onChange={(event) => setCustomEnd(event.target.value)} type="date" value={customEnd} /></label>
       </>}
-      {range && <span className="text-muted-foreground">Business dates: {range.startDate} – {range.endDate}</span>}
+      {range && <span className="ml-auto text-muted-foreground">Business dates: <span className="font-medium text-foreground">{range.startDate} – {range.endDate}</span></span>}
     </section>
     {period === "custom" && !range && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Choose valid start and end dates. The start date must be on or before the end date.</p>}
     {period !== "custom" && !range && <p className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">The workspace timezone is invalid, so this date range can’t be loaded. Contact your workspace owner to correct it.</p>}

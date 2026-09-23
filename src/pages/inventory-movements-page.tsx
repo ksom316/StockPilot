@@ -94,7 +94,7 @@ export function InventoryMovementsPage() {
     <section className="space-y-6">
       <PageHeader description="A read-only record of stock changes across this business." eyebrow="Core inventory" title="Movement history" />
 
-      <div className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="relative block sm:col-span-2 lg:col-span-1">
           <span className="sr-only">Search product name or SKU</span>
           <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

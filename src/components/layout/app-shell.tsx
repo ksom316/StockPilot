@@ -85,24 +85,26 @@ export function AppShell() {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside
-        className={`hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex ${collapsed ? "w-[68px]" : "w-64"}`}
+        className={`hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out lg:flex ${collapsed ? "w-[76px]" : "w-64"}`}
       >
-        <div className={`flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4 ${collapsed ? "justify-center px-0" : ""}`}>
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Boxes aria-hidden="true" className="size-4" />
-          </span>
-          {!collapsed && (
-            <Link className="min-w-0 outline-none" to="/dashboard">
-              <p className="text-sm font-semibold tracking-tight text-sidebar-accent-foreground">StockPilot</p>
-              <p className="truncate text-xs text-sidebar-muted-foreground" title={business.name}>{business.name}</p>
-            </Link>
-          )}
+        <div className={`flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4 ${collapsed ? "justify-center px-0" : ""}`}>
+          <Link className="flex min-w-0 items-center gap-2.5 outline-none" to="/dashboard">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+              <Boxes aria-hidden="true" className="size-4" />
+            </span>
+            {!collapsed && (
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold leading-tight tracking-tight text-sidebar-accent-foreground">StockPilot</span>
+                <span className="block truncate text-xs leading-tight text-sidebar-muted-foreground" title={business.name}>{business.name}</span>
+              </span>
+            )}
+          </Link>
         </div>
         <NavList collapsed={collapsed} groups={navGroups} />
         <div className="border-t border-sidebar-border p-2">
           <Button
             aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-            className={`w-full text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${collapsed ? "justify-center px-0" : "justify-start"}`}
+            className={`w-full text-sidebar-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${collapsed ? "justify-center px-0" : "justify-start"}`}
             onClick={() => setCollapsed((value) => !value)}
             size="sm"
             variant="ghost"
@@ -114,8 +116,8 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <Button
               aria-label="Open navigation menu"
               className="lg:hidden"
@@ -125,9 +127,10 @@ export function AppShell() {
             >
               <Menu aria-hidden="true" className="size-5" />
             </Button>
-            <span className="truncate text-sm font-medium text-muted-foreground lg:hidden" title={business.name}>{business.name}</span>
+            <span className="truncate text-sm font-medium text-foreground lg:hidden" title={business.name}>{business.name}</span>
+            <span className="hidden min-w-0 text-sm text-muted-foreground lg:inline">Workspace: <span className="font-medium text-foreground">{business.name}</span></span>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1">
             <Button aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ""}`} asChild className="relative" size="icon" variant="ghost">
               <Link to="/notifications">
                 <Bell aria-hidden="true" className="size-4" />
@@ -138,6 +141,7 @@ export function AppShell() {
                 )}
               </Link>
             </Button>
+            <span aria-hidden="true" className="mx-1 h-6 w-px bg-border" />
             <AccountMenu isSigningOut={isSigningOut} label={user?.email ?? "Your account"} onSignOut={() => void handleSignOut()} />
           </div>
         </header>
@@ -148,7 +152,7 @@ export function AppShell() {
         </main>
       </div>
 
-      {mobileNavOpen && <MobileNavDrawer businessName={business.name} groups={navGroups} onClose={() => setMobileNavOpen(false)} />}
+      <MobileNavDrawer businessName={business.name} groups={navGroups} onClose={() => setMobileNavOpen(false)} open={mobileNavOpen} />
     </div>
   )
 }

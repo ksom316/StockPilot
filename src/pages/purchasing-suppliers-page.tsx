@@ -89,7 +89,7 @@ export function PurchasingSuppliersPage() {
       {status && <p className="text-sm" role="status">{status}</p>}
       {error && !formOpen && <p className="text-sm text-destructive" role="alert">{error}</p>}
 
-      <div className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-end">
+      <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-end">
         <label className="space-y-1.5 text-sm"><span>Search suppliers</span><input className={inputClass} onChange={(event) => setTerm(event.target.value)} placeholder="Name, contact, phone or email" type="search" value={term} /></label>
         <label className="space-y-1.5 text-sm"><span>Status</span><select className={inputClass} onChange={(event) => setFilter(event.target.value)} value={filter}><option value="active">Active</option><option value="inactive">Inactive</option><option value="all">All suppliers</option></select></label>
       </div>

@@ -49,22 +49,22 @@ export function ReportsPage() {
         title="Reports"
       />
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-4 text-sm print:hidden">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm print:hidden">
         <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Report</span><select aria-label="Report type" className={inputClass} onChange={(event) => { setType(event.target.value as ReportType); setPage(1) }} value={type}>{available.map((item) => <option key={item} value={item}>{labels[item]}</option>)}</select></label>
         <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Period</span><select aria-label="Report period" className={inputClass} onChange={(event) => { setPreset(event.target.value as ReportPeriodPreset); setPage(1) }} value={preset}>{presets.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         {preset === "custom" && <>
           <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Start date</span><input aria-label="Report start date" className={inputClass} onChange={(event) => { setCustomStart(event.target.value); setPage(1) }} type="date" value={customStart} /></label>
           <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">End date</span><input aria-label="Report end date" className={inputClass} onChange={(event) => { setCustomEnd(event.target.value); setPage(1) }} type="date" value={customEnd} /></label>
         </>}
-        {range && <span className="text-muted-foreground">Business dates: {range.startDate} – {range.endDate}</span>}
+        {range && <span className="ml-auto text-muted-foreground">Business dates: <span className="font-medium text-foreground">{range.startDate} – {range.endDate}</span></span>}
       </div>
       <div className="hidden print:block"><p className="text-sm text-muted-foreground">{business?.name} · {range ? `${range.startDate} – ${range.endDate}` : "Invalid period"} · Generated {new Date().toLocaleString()}</p></div>
       {!range && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Choose a valid date range. Custom ranges must be ordered, cannot include future dates, and are limited to 366 calendar days.</p>}
       {report.isLoading && <LoadingState className="rounded-lg border border-border bg-card p-8 text-center" label="Loading report…" />}
       {report.isError && <ErrorState onRetry={() => void report.refetch()} title="Report unavailable">{report.error.message}</ErrorState>}
       {report.data && <>
-        <div className="print-report-header"><p className="text-sm font-medium text-primary">{labels[type]}</p><h2 className="mt-1 text-2xl font-semibold">{business?.name}</h2><p className="mt-1 text-sm text-muted-foreground">Business dates: {report.data.startDate} – {report.data.endDate}</p></div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.data.summary).map(([key, value]) => <div className="rounded-lg border border-border bg-card p-4" key={key}><p className="text-xs capitalize text-muted-foreground">{key.replace(/([A-Z])/g, " $1")}</p><p className="mt-2 break-all font-semibold tabular-nums">{value === null ? "Unavailable" : String(value)}</p></div>)}</div>
+        <div className="print-report-header space-y-1 border-b border-border pb-4"><p className="text-sm font-medium text-primary">{labels[type]}</p><h2 className="text-xl font-semibold tracking-tight">{business?.name}</h2><p className="text-sm text-muted-foreground">Business dates: {report.data.startDate} – {report.data.endDate}</p></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.data.summary).map(([key, value]) => <div className="rounded-lg border border-border bg-card p-4 shadow-xs" key={key}><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{key.replace(/([A-Z])/g, " $1")}</p><p className="mt-2 break-all text-xl font-semibold tabular-nums">{value === null ? "Unavailable" : String(value)}</p></div>)}</div>
         {report.data.rows.length === 0 ? <EmptyState description="No data was recorded for this business in the selected period." title="No recorded data in this period" /> : (
           <TableContainer>
             <Table>

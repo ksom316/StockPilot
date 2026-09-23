@@ -12,15 +12,15 @@ interface NavListProps {
 /** Grouped navigation list shared by the desktop sidebar and the mobile navigation drawer. */
 export function NavList({ groups, collapsed = false, onNavigate }: NavListProps) {
   return (
-    <nav aria-label="Workspace navigation" className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+    <nav aria-label="Workspace navigation" className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-5">
       {groups.map((group) => (
         <div key={group.label}>
           {!collapsed && (
-            <p className="px-2.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted-foreground">
+            <p className="mb-2 px-2.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted-foreground/80">
               {group.label}
             </p>
           )}
-          <ul className={cn("space-y-0.5", !collapsed && "mt-1.5")}>
+          <ul className="space-y-0.5">
             {group.items.map((item) => (
               <li key={item.label}>
                 {item.disabled ? (
@@ -32,7 +32,7 @@ export function NavList({ groups, collapsed = false, onNavigate }: NavListProps)
                     )}
                     title={item.disabledReason ?? `${item.label} is coming soon`}
                   >
-                    <item.icon aria-hidden="true" className="size-4 shrink-0" />
+                    <item.icon aria-hidden="true" className="size-[18px] shrink-0" />
                     {!collapsed && (
                       <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                         <span className="truncate">{item.label}</span>
@@ -45,8 +45,8 @@ export function NavList({ groups, collapsed = false, onNavigate }: NavListProps)
                   <NavLink
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-primary/50",
-                        isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+                        "group relative flex items-center gap-2.5 rounded-md py-2 pl-2.5 pr-2.5 text-sm font-medium text-sidebar-foreground/90 outline-none transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-primary/50",
+                        isActive && "bg-sidebar-accent font-semibold text-sidebar-accent-foreground",
                         collapsed && "justify-center px-0",
                       )
                     }
@@ -55,8 +55,11 @@ export function NavList({ groups, collapsed = false, onNavigate }: NavListProps)
                     title={collapsed ? item.label : undefined}
                     to={item.to}
                   >
-                    <item.icon aria-hidden="true" className="size-4 shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {({ isActive }) => <>
+                      <span aria-hidden="true" className={cn("absolute inset-y-1 left-0 w-0.5 rounded-full bg-sidebar-primary transition-opacity duration-150", isActive ? "opacity-100" : "opacity-0")} />
+                      <item.icon aria-hidden="true" className={cn("size-[18px] shrink-0 transition-colors duration-150", isActive ? "text-sidebar-primary" : "text-sidebar-muted-foreground group-hover:text-sidebar-accent-foreground")} />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </>}
                   </NavLink>
                 )}
               </li>
