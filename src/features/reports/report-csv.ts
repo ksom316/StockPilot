@@ -1,0 +1,4 @@
+function formulaSafe(value: string) { return /^[=+\-@]/.test(value) ? `'${value}` : value }
+export function csvCell(value: unknown, textual = false) { const raw = value === null || value === undefined ? "" : String(value); const safe = textual ? formulaSafe(raw) : raw; return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe }
+export function toCsv(columns: Array<{ key: string; label: string; text?: boolean }>, rows: Array<Record<string, unknown>>) { return [columns.map((column) => csvCell(column.label, true)).join(","), ...rows.map((row) => columns.map((column) => csvCell(row[column.key], column.text)).join(","))].join("\r\n") + "\r\n" }
+export function downloadCsv(filename: string, content: string) { const url = URL.createObjectURL(new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url) }

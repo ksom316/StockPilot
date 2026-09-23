@@ -54,6 +54,7 @@ export function AppShell() {
               <>
                 {business && <span className="hidden max-w-48 truncate text-muted-foreground md:inline" title={business.name}>{business.name}</span>}
                 {business && <NavLink className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" to="/settings/modules"><Settings2 aria-hidden="true" className="size-4" /><span>Modules</span></NavLink>}
+                {business && <NavLink className="text-muted-foreground hover:text-foreground" to="/reports">Reports</NavLink>}
                 {business && <NavLink aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ""}`} className="relative inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" to="/notifications"><Bell aria-hidden="true" className="size-4" /><span className="hidden sm:inline">Notifications</span>{Boolean(unreadNotificationCount) && <span aria-hidden="true" className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{unreadNotificationCount}</span>}</NavLink>}
                 <Button disabled={isSigningOut} onClick={handleSignOut} size="sm" variant="outline">
                   <LogOut aria-hidden="true" className="size-4" />

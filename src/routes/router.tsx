@@ -42,6 +42,7 @@ export const routes = [
               { path: "/inventory", element: <InventoryPage /> },
               { path: "/inventory/movements", element: <InventoryMovementsPage /> },
               { path: "/settings/modules", element: <ModuleSettingsPage /> },
+              { path: "/reports", lazy: async () => { const module = await import("@/pages/reports-page"); return { Component: module.ReportsPage, HydrateFallback: RouteLoadingScreen } } },
               { path: "/notifications", lazy: async () => {
                 const module = await import("@/pages/notifications-page")
                 return { Component: module.NotificationsPage, HydrateFallback: RouteLoadingScreen }

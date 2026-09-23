@@ -1,4 +1,11 @@
 @import "tailwindcss";
+
+@media print {
+  header, nav, button, select, input { display: none !important; }
+  main { max-width: none !important; padding: 0 !important; }
+  .print-report-header { display: block !important; }
+  table { font-size: 10pt; }
+}
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
