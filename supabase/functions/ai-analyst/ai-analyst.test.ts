@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { AnalystError } from "./errors.ts"
 import { createAnalystHandler, type AnalystDependencies, type CompletionMetadata } from "./handler.ts"
 import { OpenRouterProvider, type AiProvider, type AnalystProviderResult } from "./provider.ts"
+import { buildContextRpcArgs } from "./contract.ts"
 import type { AnalystProviderInput } from "./grounding.ts"
 
 const BUSINESS_ID = "10000000-0000-4000-8000-000000000001"
@@ -99,6 +100,46 @@ function request(body: unknown, headers: Record<string, string> = {}) {
 const validBody = { businessId: BUSINESS_ID, period: "THIS_MONTH", question: "How were sales?" }
 
 describe("AI Analyst handler", () => {
+  it.each(["TODAY", "THIS_WEEK", "THIS_MONTH", "LAST_30_COMPLETED_DAYS"] as const)("uses the two-argument context RPC for %s", (period) => {
+    expect(buildContextRpcArgs(BUSINESS_ID, period)).toEqual({
+      p_business_id: BUSINESS_ID,
+      p_period: period,
+    })
+  })
+
+  it("uses the four-argument context RPC for CUSTOM", () => {
+    expect(buildContextRpcArgs(BUSINESS_ID, "CUSTOM", "2026-09-01", "2026-09-15")).toEqual({
+      p_business_id: BUSINESS_ID,
+      p_period: "CUSTOM",
+      p_start_date: "2026-09-01",
+      p_end_date: "2026-09-15",
+    })
+  })
+
+  it("allows a valid TODAY request to proceed beyond context retrieval", async () => {
+    const environment = setup({
+      selectedContext: context({
+        period: {
+          key: "TODAY",
+          startDate: "2026-09-22",
+          endDate: "2026-09-22",
+          asOfBusinessDate: "2026-09-22",
+          timezone: "UTC",
+          currentPartialDateExcluded: false,
+        },
+      }),
+    })
+
+    const response = await environment.handler(request({
+      businessId: BUSINESS_ID,
+      period: "TODAY",
+      question: "How is my business performing, and what should I pay attention to?",
+    }))
+
+    expect(response.status).toBe(200)
+    expect(environment.provider.calls).toHaveLength(1)
+  })
+
   it("returns a grounded response and deterministic evidence", async () => {
     const { handler, completions } = setup()
     const response = await handler(request(validBody))

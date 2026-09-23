@@ -18,6 +18,27 @@ export interface AnalystRequest {
   endDate?: string
 }
 
+export function buildContextRpcArgs(
+  businessId: string,
+  period: AnalystPeriod,
+  startDate?: string,
+  endDate?: string,
+) {
+  if (period === "CUSTOM") {
+    return {
+      p_business_id: businessId,
+      p_period: period,
+      p_start_date: startDate ?? null,
+      p_end_date: endDate ?? null,
+    }
+  }
+
+  return {
+    p_business_id: businessId,
+    p_period: period,
+  }
+}
+
 export interface AnalystContext {
   schemaVersion: 1
   period: Record<string, unknown> & {

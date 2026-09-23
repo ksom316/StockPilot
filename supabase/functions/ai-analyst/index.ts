@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.116.0"
 import { AnalystError } from "./errors.ts"
 import { createAnalystHandler, mapContextError, type AnalystDependencies, type CompletionMetadata } from "./handler.ts"
 import { OpenRouterProvider } from "./provider.ts"
-import type { AnalystPeriod } from "./contract.ts"
+import { buildContextRpcArgs, type AnalystPeriod } from "./contract.ts"
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -44,12 +44,7 @@ const dependencies: AnalystDependencies = {
     return data.user.id
   },
   async getContext(token: string, businessId: string, period: AnalystPeriod, startDate?: string, endDate?: string) {
-    const { data, error } = await callerClient(token).rpc("get_ai_analyst_context", {
-      p_business_id: businessId,
-      p_period: period,
-      p_start_date: startDate ?? null,
-      p_end_date: endDate ?? null,
-    })
+    const { data, error } = await callerClient(token).rpc("get_ai_analyst_context", buildContextRpcArgs(businessId, period, startDate, endDate))
     if (error) throw mapContextError(error)
     return data
   },
