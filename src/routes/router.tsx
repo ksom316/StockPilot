@@ -74,6 +74,7 @@ export const routes = [
                 { path: "/finance", element: <FinanceOverviewPage /> },
                 { path: "/finance/expenses", lazy: async () => { const module = await import("@/pages/finance-expenses-page"); return { Component: module.FinanceExpensesPage, HydrateFallback: RouteLoadingScreen } } },
               ] },
+              { element: <RequireModule module="ai_analyst" allowedRoles={["owner", "manager"]} />, children: [{ path: "/analyst", lazy: async () => { const module = await import("@/pages/analyst-page"); return { Component: module.AnalystPage, HydrateFallback: RouteLoadingScreen } } }] },
             ],
           },
         ],

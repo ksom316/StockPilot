@@ -70,6 +70,24 @@ describe("authentication routes", () => {
     expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
   })
 
+  it("protects Analyst from unauthenticated access", async () => {
+    renderRoute("/analyst")
+    expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
+  })
+
+  it("allows owner Analyst access only when the module is enabled", async () => {
+    renderRoute("/analyst", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: ["ai_analyst"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /ask about your business/i })).toBeInTheDocument()
+    cleanup()
+    renderRoute("/analyst", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "owner", enabledModules: [], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+  })
+
+  it("denies Analyst access to employees even when enabled", async () => {
+    renderRoute("/analyst", { session: testSession, user: testUser }, { business: testBusiness, membership: { ...testMembership, role: "employee" }, role: "employee", enabledModules: ["ai_analyst"], onboardingRequired: false })
+    expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
+  })
+
   it("protects movement history and renders it for an authenticated business member", async () => {
     renderRoute("/inventory/movements", { session: testSession, user: testUser }, { business: testBusiness, membership: testMembership, role: "cashier", onboardingRequired: false })
     expect(await screen.findByRole("heading", { name: /movement history/i })).toBeInTheDocument()

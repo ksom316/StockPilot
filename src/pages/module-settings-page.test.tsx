@@ -47,9 +47,9 @@ describe("ModuleSettingsPage", () => {
       const moduleRow = toggle.closest("li")
       expect(toggle).toHaveAttribute("aria-checked", "false")
       expect(within(moduleRow!).getByText(module.description)).toBeInTheDocument()
-      expect(within(moduleRow!).getByText(module.key === "sales" || module.key === "expenses" ? "Disabled · Available" : "Disabled · Coming soon")).toBeInTheDocument()
+      expect(within(moduleRow!).getByText(module.key === "sales" || module.key === "expenses" || module.key === "ai_analyst" ? "Disabled · Available" : "Disabled · Coming soon")).toBeInTheDocument()
     }
-    expect(within(optional).getAllByRole("switch")).toHaveLength(7)
+    expect(within(optional).getAllByRole("switch")).toHaveLength(8)
   })
 
   it("lets the owner enable and disable an optional module", async () => {
