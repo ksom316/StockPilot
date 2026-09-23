@@ -42,6 +42,10 @@ export const routes = [
               { path: "/inventory", element: <InventoryPage /> },
               { path: "/inventory/movements", element: <InventoryMovementsPage /> },
               { path: "/settings/modules", element: <ModuleSettingsPage /> },
+              { element: <RequireModule module="team" allowedRoles={["owner", "manager"]} />, children: [{ path: "/team", lazy: async () => {
+                const module = await import("@/pages/team-page")
+                return { Component: module.TeamPage, HydrateFallback: RouteLoadingScreen }
+              } }] },
               { element: <RequireModule module="smart_insights" allowedRoles={["owner", "manager", "employee"]} />, children: [{ path: "/inventory/insights", lazy: async () => {
                 const module = await import("@/pages/inventory-insights-page")
                 return { Component: module.InventoryInsightsPage, HydrateFallback: RouteLoadingScreen }
@@ -81,6 +85,10 @@ export const routes = [
               { element: <RequireModule module="ai_analyst" allowedRoles={["owner", "manager"]} />, children: [{ path: "/analyst", lazy: async () => { const module = await import("@/pages/analyst-page"); return { Component: module.AnalystPage, HydrateFallback: RouteLoadingScreen } } }] },
             ],
           },
+          { path: "/team/accept", lazy: async () => {
+            const module = await import("@/pages/team-invitation-acceptance-page")
+            return { Component: module.TeamInvitationAcceptancePage, HydrateFallback: RouteLoadingScreen }
+          } },
         ],
       },
       { path: "*", element: <NotFoundPage /> },
