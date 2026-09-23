@@ -52,6 +52,18 @@ function renderDashboard({ role = "owner", enabledModules = ["sales", "purchasin
 describe("module-aware dashboard overview", () => {
   beforeEach(() => { vi.clearAllMocks() })
 
+  it("exposes workspace management to owners", () => {
+    renderDashboard()
+    const workspace = screen.getByRole("region", { name: /businesses & workspaces/i })
+    expect(within(workspace).getByRole("link", { name: "Add another business" })).toHaveAttribute("href", "/businesses/new")
+    expect(within(workspace).getByRole("link", { name: "Manage workspaces" })).toHaveAttribute("href", "/settings/modules")
+  })
+
+  it("does not expose business creation to non-owner roles", () => {
+    renderDashboard({ role: "manager" })
+    expect(screen.queryByRole("region", { name: /businesses & workspaces/i })).not.toBeInTheDocument()
+  })
+
   it("shows a useful Inventory-only dashboard without fetching a product catalog", () => {
     renderDashboard({ enabledModules: [] })
     const inventory = screen.getByRole("region", { name: /inventory overview/i })

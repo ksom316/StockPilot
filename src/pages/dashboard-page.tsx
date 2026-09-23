@@ -50,6 +50,10 @@ export function DashboardPage() {
     </section>
     {period === "custom" && !range && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Choose valid dates in order. Custom ranges can include at most 366 calendar days.</p>}
     {period !== "custom" && !range && <p className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">The workspace timezone is invalid, so this period cannot be loaded. Contact your workspace owner.</p>}
+    {role === "owner" && <section aria-labelledby="workspace-management-title" className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <div><h2 className="font-semibold" id="workspace-management-title">Businesses &amp; workspaces</h2><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Manage the businesses you can access, or add another workspace for a separate operation.</p></div>
+      <div className="flex shrink-0 flex-wrap gap-2"><Button asChild size="sm"><Link to="/businesses/new">Add another business</Link></Button><Button asChild size="sm" variant="outline"><Link to="/settings/modules">Manage workspaces</Link></Button></div>
+    </section>}
 
     <div className="divide-y divide-border">
       <section aria-labelledby="inventory-summary-title" className="space-y-4 pb-8">
