@@ -20,6 +20,10 @@ function renderPage(enabledModules: Array<"sales" | "purchasing" | "expenses" | 
   return render(<MemoryRouter><TestBusinessProvider value={createBusinessValue({ business: testBusiness, role: "owner", enabledModules })}><AnalystPage /></TestBusinessProvider></MemoryRouter>)
 }
 
+function AnalystWorkspace({ id }: { id: string }) {
+  return <MemoryRouter><TestBusinessProvider value={createBusinessValue({ business: { ...testBusiness, id }, role: "owner", enabledModules: ["sales", "expenses"] })}><AnalystPage /></TestBusinessProvider></MemoryRouter>
+}
+
 describe("AnalystPage", () => {
   beforeEach(() => mocks.askAnalyst.mockReset())
 
@@ -92,6 +96,17 @@ describe("AnalystPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/preparing a grounded answer/i)
     expect(screen.getByRole("button", { name: /analyzing/i })).toBeDisabled()
     await act(async () => finish?.())
+  })
+
+  it("does not apply an answer after the workspace changes", async () => {
+    const user = userEvent.setup()
+    mocks.askAnalyst.mockImplementation(() => new Promise<typeof answer>((resolve) => { setTimeout(() => resolve(answer), 50) }))
+    const first = render(<AnalystWorkspace id="business-1" />)
+    await user.type(screen.getByRole("textbox", { name: "Question" }), "How were sales?")
+    await user.click(screen.getByRole("button", { name: /ask analyst/i }))
+    first.rerender(<AnalystWorkspace id="business-2" />)
+    await new Promise((resolve) => setTimeout(resolve, 75))
+    expect(screen.queryByRole("heading", { name: "Answer" })).not.toBeInTheDocument()
   })
 
 })

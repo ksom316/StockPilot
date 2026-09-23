@@ -16,8 +16,8 @@ function authValue(user: User): AuthContextValue {
 }
 
 function Probe() {
-  const { business, isLoading, enabledModules } = useBusiness()
-  return <div>{isLoading ? "workspace loading" : `${business?.name ?? "no business"}:${enabledModules.join(",")}`}</div>
+  const { business, error, isLoading, enabledModules } = useBusiness()
+  return <div>{isLoading ? "workspace loading" : error ?? `${business?.name ?? "no business"}:${enabledModules.join(",")}`}</div>
 }
 
 function ModuleUpdateProbe() {
@@ -78,6 +78,13 @@ describe("BusinessProvider identity boundaries", () => {
       releaseUserB?.({ data: [], error: null })
     })
     expect(await screen.findByText("no business:")).toBeInTheDocument()
+  })
+
+  it("shows a recoverable error when workspace initialization rejects", async () => {
+    supabaseMocks.from.mockImplementation(() => { throw new Error("network unavailable") })
+    render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><Probe /></BusinessProvider></AuthContext.Provider>)
+    expect(await screen.findByText(/couldn't reach your workspace/i)).toBeInTheDocument()
+    expect(screen.queryByText("workspace loading")).not.toBeInTheDocument()
   })
 
   it("updates an existing module row for the current business and refreshes provider state", async () => {

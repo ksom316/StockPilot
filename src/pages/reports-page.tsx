@@ -61,7 +61,7 @@ export function ReportsPage() {
       <div className="hidden print:block"><p className="text-sm text-muted-foreground">{business?.name} · {range ? `${range.startDate} – ${range.endDate}` : "Invalid period"} · Generated {new Date().toLocaleString()}</p></div>
       {!range && <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Choose a valid date range. Custom ranges must be ordered, cannot include future dates, and are limited to 366 calendar days.</p>}
       {report.isLoading && <LoadingState className="rounded-lg border border-border bg-card p-8 text-center" label="Loading report…" />}
-      {report.isError && <ErrorState onRetry={() => void report.refetch()} title="Report unavailable">{report.error.message}</ErrorState>}
+      {report.isError && <ErrorState onRetry={() => void report.refetch()} title="Report unavailable">We couldn't load this report. Please try again.</ErrorState>}
       {report.data && <>
         <div className="print-report-header space-y-1 border-b border-border pb-4"><p className="text-sm font-medium text-primary">{labels[type]}</p><h2 className="text-xl font-semibold tracking-tight">{business?.name}</h2><p className="text-sm text-muted-foreground">Business dates: {report.data.startDate} – {report.data.endDate}</p></div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.data.summary).map(([key, value]) => <div className="rounded-lg border border-border bg-card p-4 shadow-xs" key={key}><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{key.replace(/([A-Z])/g, " $1")}</p><p className="mt-2 break-all text-xl font-semibold tabular-nums">{value === null ? "Unavailable" : String(value)}</p></div>)}</div>

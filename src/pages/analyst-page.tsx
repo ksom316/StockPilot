@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/page-header"
 import { useBusiness } from "@/features/business/business-context"
@@ -25,11 +25,13 @@ export function AnalystPage() {
   const [result, setResult] = useState<AnalystResponse | null>(null)
   const [error, setError] = useState<AnalystDataError | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const requestId = useRef(0)
   const suggestions = useMemo(() => starterQuestions(enabledModules), [enabledModules])
   const customRange = period === "CUSTOM" && business ? getAnalyticsDateRange("custom", business.timezone, new Date(), customStart, customEnd) : null
 
   useEffect(() => {
     // A workspace switch must never retain generated content from the previous business.
+    requestId.current += 1
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setResult(null)
     setError(null)
@@ -48,13 +50,16 @@ export function AnalystPage() {
       return
     }
     setError(null)
+    const currentRequest = ++requestId.current
+    const requestedBusinessId = business.id
     setIsPending(true)
     try {
-      setResult(await askAnalyst({ businessId: business.id, period, question: trimmed, ...(period === "CUSTOM" ? { startDate: customStart, endDate: customEnd } : {}) }))
+      const response = await askAnalyst({ businessId: requestedBusinessId, period, question: trimmed, ...(period === "CUSTOM" ? { startDate: customStart, endDate: customEnd } : {}) })
+      if (currentRequest === requestId.current && business?.id === requestedBusinessId) setResult(response)
     } catch (cause) {
-      setError(cause instanceof AnalystDataError ? new AnalystDataError(analystErrorMessage(cause.code, cause.status), cause.code, cause.status) : new AnalystDataError(analystErrorMessage()))
+      if (currentRequest === requestId.current && business?.id === requestedBusinessId) setError(cause instanceof AnalystDataError ? new AnalystDataError(analystErrorMessage(cause.code, cause.status), cause.code, cause.status) : new AnalystDataError(analystErrorMessage()))
     } finally {
-      setIsPending(false)
+      if (currentRequest === requestId.current) setIsPending(false)
     }
   }
 

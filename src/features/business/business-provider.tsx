@@ -33,7 +33,8 @@ export function BusinessProvider({ children }: PropsWithChildren) {
   const resolveBusiness = useCallback(async (options?: { suppressError?: boolean; preferredBusinessId?: string }): Promise<Business | null> => {
     const requestId = ++requestIdRef.current
     if (!user || !supabase) { setState(emptyState); return null }
-    const { data: membershipData, error: membershipError } = await supabase.from("business_members").select("id, business_id, role, status, businesses(id, name, business_type, currency, timezone, icon_id)").eq("user_id", user.id).eq("status", "active")
+    try {
+      const { data: membershipData, error: membershipError } = await supabase.from("business_members").select("id, business_id, role, status, businesses(id, name, business_type, currency, timezone, icon_id)").eq("user_id", user.id).eq("status", "active")
     if (membershipError) {
       if (requestId !== requestIdRef.current) return null
       setState({ ...emptyState, resolvedUserId: user.id, error: options?.suppressError ? null : "We couldn't load your workspaces. Please try again." })
@@ -66,7 +67,12 @@ export function BusinessProvider({ children }: PropsWithChildren) {
     const business: Business = { id: activeWorkspace.id, name: activeWorkspace.name, businessType: activeWorkspace.businessType, currency: activeWorkspace.currency, timezone: activeWorkspace.timezone, iconId: activeWorkspace.iconId }
     setState({ resolvedUserId: user.id, businesses: accessibleBusinesses, business, membership: { id: activeWorkspace.membershipId, businessId: activeWorkspace.id, role: activeWorkspace.role, status: "active" }, enabledModules: (moduleData ?? []).map((item) => item.module as OptionalModule), hasFinancialActivity: Boolean(financialActivityResponse?.data), error: null })
     writePreferredBusinessId(business.id)
-    return business
+      return business
+    } catch {
+      if (requestId !== requestIdRef.current) return null
+      setState({ ...emptyState, resolvedUserId: user.id, error: options?.suppressError ? null : "We couldn't reach your workspace. Check your connection and try again." })
+      return null
+    }
   }, [user])
 
   useEffect(() => {
@@ -81,7 +87,9 @@ export function BusinessProvider({ children }: PropsWithChildren) {
     setState((current) => ({ ...current, business: null, membership: null, enabledModules: [], error: null }))
     try {
       const resolved = await resolveBusiness({ preferredBusinessId: businessId })
-      if (!resolved || resolved.id !== businessId) throw new Error("That workspace is no longer available.")
+      if (!resolved || resolved.id !== businessId) setState((current) => ({ ...current, error: "That workspace is no longer available. Choose another workspace and try again." }))
+    } catch {
+      setState((current) => ({ ...current, error: "We couldn't switch workspaces. Check your connection and try again." }))
     } finally {
       setIsSwitching(false)
     }

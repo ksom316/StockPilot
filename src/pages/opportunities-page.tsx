@@ -1,5 +1,5 @@
 import { AlertTriangle, Lightbulb, Sparkles } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
@@ -10,18 +10,19 @@ import { useOpportunitySnapshot } from "@/features/opportunities/opportunity-que
 
 const typeLabels: Record<OpportunitySignalType, string> = { RESTOCK_DEMAND: "Restock Demand", SALES_MOMENTUM: "Sales Momentum", SLOW_MOVING_STOCK: "Slow-Moving Stock", MARGIN_ATTENTION: "Margin Attention", REPEATED_PURCHASE_DEMAND: "Repeated Purchase Demand" }
 export function OpportunitiesPage() {
-  const { business, enabledModules, role } = useBusiness(); const query = useOpportunitySnapshot(); const [advisor, setAdvisor] = useState<AdvisorResponse | null>(null); const [advisorError, setAdvisorError] = useState<string | null>(null); const [isPending, setIsPending] = useState(false); const [focus, setFocus] = useState("")
+  const { business, enabledModules, role } = useBusiness(); const query = useOpportunitySnapshot(); const [advisor, setAdvisor] = useState<AdvisorResponse | null>(null); const [advisorError, setAdvisorError] = useState<string | null>(null); const [isPending, setIsPending] = useState(false); const [focus, setFocus] = useState(""); const requestId = useRef(0)
   useEffect(() => {
     // A workspace switch must never retain generated guidance from the previous business.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAdvisor(null); setAdvisorError(null); setFocus(""); setIsPending(false)
+    requestId.current += 1; setAdvisor(null); setAdvisorError(null); setFocus(""); setIsPending(false)
   }, [business?.id])
   const requestAdvice = async (signalId?: string) => {
     if (!business || isPending) return
+    const currentRequest = ++requestId.current; const requestedBusinessId = business.id
     setIsPending(true); setAdvisorError(null); setFocus(signalId ?? "")
-    try { setAdvisor(await getOpportunityAdvice({ businessId: business.id, ...(signalId ? { signalId } : {}) })) }
-    catch (cause) { setAdvisorError(cause instanceof OpportunityDataError ? cause.message : opportunityErrorMessage()) }
-    finally { setIsPending(false) }
+    try { const response = await getOpportunityAdvice({ businessId: requestedBusinessId, ...(signalId ? { signalId } : {}) }); if (currentRequest === requestId.current && business?.id === requestedBusinessId) setAdvisor(response) }
+    catch (cause) { if (currentRequest === requestId.current && business?.id === requestedBusinessId) setAdvisorError(cause instanceof OpportunityDataError ? cause.message : opportunityErrorMessage()) }
+    finally { if (currentRequest === requestId.current) setIsPending(false) }
   }
   if (!enabledModules.includes("smart_insights") || !["owner", "manager"].includes(role ?? "")) return null
   return <section aria-labelledby="opportunities-heading" className="space-y-6">
