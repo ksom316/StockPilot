@@ -10,7 +10,7 @@ Return only JSON with exactly: answer (non-empty string), evidenceRefs (array of
 
 export interface AnalystProviderInput {
   systemInstructions: string
-  context: AnalystContext
+  context: Record<string, unknown>
   question: string
   evidenceIds: string[]
 }
@@ -22,7 +22,7 @@ export function buildProviderInput(
 ): AnalystProviderInput {
   return {
     systemInstructions: GROUNDING_INSTRUCTIONS,
-    context,
+    context: context as unknown as Record<string, unknown>,
     question,
     evidenceIds,
   }

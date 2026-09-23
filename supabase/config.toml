@@ -386,6 +386,11 @@ deno_version = 2
 # deterministic business-context RPC keeps the caller Authorization header.
 verify_jwt = false
 
+[functions.opportunity-advisor]
+# Authentication is validated inside the function; the opportunity RPC keeps
+# the caller Authorization header for RLS/module authorization.
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
