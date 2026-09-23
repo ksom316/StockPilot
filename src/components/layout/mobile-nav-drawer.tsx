@@ -2,6 +2,7 @@ import { X } from "lucide-react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 
 import type { NavGroup } from "@/components/layout/nav-config"
+import { BrandMark } from "@/components/brand/brand-mark"
 import { NavList } from "@/components/layout/nav-list"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -114,9 +115,12 @@ export function MobileNavDrawer({ open, groups, businessName, onClose }: MobileN
         tabIndex={-1}
       >
         <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold tracking-tight text-sidebar-accent-foreground">StockPilot</p>
-            <p className="truncate text-xs text-sidebar-muted-foreground" title={businessName}>{businessName}</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <BrandMark className="size-8 shrink-0 rounded-md" decorative />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold tracking-tight text-sidebar-accent-foreground">StockPilot</p>
+              <p className="truncate text-xs text-sidebar-muted-foreground" title={businessName}>{businessName}</p>
+            </div>
           </div>
           <Button aria-label="Close navigation menu" className="shrink-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={onClose} size="icon" variant="ghost">
             <X aria-hidden="true" className="size-4" />

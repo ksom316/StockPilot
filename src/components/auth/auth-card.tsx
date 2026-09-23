@@ -1,6 +1,7 @@
-import { Boxes } from "lucide-react"
 import type { PropsWithChildren, ReactNode } from "react"
 import { Link } from "react-router-dom"
+
+import { BrandMark } from "@/components/brand/brand-mark"
 
 interface AuthCardProps extends PropsWithChildren {
   title: string
@@ -14,7 +15,7 @@ export function AuthCard({ title, description, footer, children }: AuthCardProps
       <div className="mb-7 text-center">
         <Link className="inline-flex items-center gap-2 font-semibold tracking-tight sm:hidden" to="/">
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Boxes aria-hidden="true" className="size-5" />
+            <BrandMark className="size-7 rounded-md" decorative />
           </span>
           StockPilot
         </Link>

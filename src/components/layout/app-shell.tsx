@@ -1,8 +1,9 @@
-import { Bell, Boxes, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { Bell, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 
 import { AccountMenu } from "@/components/layout/account-menu"
+import { BrandMark } from "@/components/brand/brand-mark"
 import { buildNavGroups } from "@/components/layout/nav-config"
 import { NavList } from "@/components/layout/nav-list"
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer"
@@ -51,7 +52,7 @@ export function AppShell() {
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
             <Link className="flex items-center gap-2 text-lg font-semibold tracking-tight" to={session ? "/dashboard" : "/"}>
               <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Boxes aria-hidden="true" className="size-4" />
+                <BrandMark className="size-7 rounded-md" decorative />
               </span>
               <span className="hidden sm:inline">StockPilot</span>
             </Link>
@@ -94,7 +95,7 @@ export function AppShell() {
         <div className={`flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4 ${collapsed ? "justify-center px-0" : ""}`}>
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-              <Boxes aria-hidden="true" className="size-4" />
+              <BrandMark className="size-7 rounded-md" decorative />
             </span>
             {!collapsed && (
               <span className="min-w-0">
