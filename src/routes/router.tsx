@@ -46,6 +46,10 @@ export const routes = [
                 const module = await import("@/pages/inventory-insights-page")
                 return { Component: module.InventoryInsightsPage, HydrateFallback: RouteLoadingScreen }
               } }] },
+              { element: <RequireModule module="smart_insights" allowedRoles={["owner", "manager"]} />, children: [{ path: "/opportunities", lazy: async () => {
+                const module = await import("@/pages/opportunities-page")
+                return { Component: module.OpportunitiesPage, HydrateFallback: RouteLoadingScreen }
+              } }] },
               { element: <RequireModule module="sales" />, children: [
                 { path: "/sales", element: <SalesCheckoutPage /> },
                 { path: "/sales/history", element: <SalesHistoryPage /> },

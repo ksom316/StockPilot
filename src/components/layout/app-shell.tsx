@@ -81,7 +81,10 @@ export function AppShell() {
                 ) : module === "expenses" ? (
                   ["owner", "manager"].includes(role ?? "") ? <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/finance">Finance</NavLink> : null
                 ) : module === "smart_insights" ? (
-                  <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/inventory/insights">Smart Inventory</NavLink>
+                  <span className="flex shrink-0 items-center gap-4" key={module}>
+                    <NavLink className={({ isActive }) => isActive ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"} to="/inventory/insights">Smart Inventory</NavLink>
+                    {["owner", "manager"].includes(role ?? "") && <NavLink className={({ isActive }) => isActive ? "font-medium text-primary" : "text-muted-foreground hover:text-foreground"} to="/opportunities">Opportunities</NavLink>}
+                  </span>
                 ) : module === "ai_analyst" && ["owner", "manager"].includes(role ?? "") ? (
                   <NavLink className={({ isActive }) => isActive ? "shrink-0 font-medium text-primary" : "shrink-0 text-muted-foreground hover:text-foreground"} key={module} to="/analyst">AI Analyst</NavLink>
                 ) : (
