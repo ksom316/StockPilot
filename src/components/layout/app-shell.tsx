@@ -1,4 +1,4 @@
-import { Boxes, LogOut, Settings2 } from "lucide-react"
+import { Bell, Boxes, LogOut, Settings2 } from "lucide-react"
 import { useState } from "react"
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 
@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/auth-context"
 import { useBusiness } from "@/features/business/business-context"
 import { getModuleLabel } from "@/features/business/modules"
+import { useNotificationSummary } from "@/features/notifications/notification-queries"
 
 export function AppShell() {
   const { session, signOut } = useAuth()
   const { business, enabledModules, role } = useBusiness()
+  const notificationItems = useNotificationSummary()
+  const unreadNotificationCount = notificationItems.filter((item) => !item.readAt).length
   const navigate = useNavigate()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState("")
@@ -51,6 +54,7 @@ export function AppShell() {
               <>
                 {business && <span className="hidden max-w-48 truncate text-muted-foreground md:inline" title={business.name}>{business.name}</span>}
                 {business && <NavLink className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" to="/settings/modules"><Settings2 aria-hidden="true" className="size-4" /><span>Modules</span></NavLink>}
+                {business && <NavLink aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ""}`} className="relative inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" to="/notifications"><Bell aria-hidden="true" className="size-4" /><span className="hidden sm:inline">Notifications</span>{Boolean(unreadNotificationCount) && <span aria-hidden="true" className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">{unreadNotificationCount}</span>}</NavLink>}
                 <Button disabled={isSigningOut} onClick={handleSignOut} size="sm" variant="outline">
                   <LogOut aria-hidden="true" className="size-4" />
                   <span className="ml-2">{isSigningOut ? "Signing out…" : "Sign out"}</span>

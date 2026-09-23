@@ -42,6 +42,10 @@ export const routes = [
               { path: "/inventory", element: <InventoryPage /> },
               { path: "/inventory/movements", element: <InventoryMovementsPage /> },
               { path: "/settings/modules", element: <ModuleSettingsPage /> },
+              { path: "/notifications", lazy: async () => {
+                const module = await import("@/pages/notifications-page")
+                return { Component: module.NotificationsPage, HydrateFallback: RouteLoadingScreen }
+              } },
               { element: <RequireModule module="team" allowedRoles={["owner", "manager"]} />, children: [{ path: "/team", lazy: async () => {
                 const module = await import("@/pages/team-page")
                 return { Component: module.TeamPage, HydrateFallback: RouteLoadingScreen }

@@ -1,0 +1,27 @@
+import { Bell, CheckCheck, CircleAlert, Info, TriangleAlert } from "lucide-react"
+import { Link } from "react-router-dom"
+import { Button } from "@/components/ui/button"
+import { useNotifications, useNotificationMutations } from "@/features/notifications/notification-queries"
+import type { NotificationItem } from "@/features/notifications/notification-types"
+
+function time(value: string) { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) }
+function icon(item: NotificationItem) { return item.severity === "critical" ? <CircleAlert aria-hidden="true" className="size-5 text-destructive" /> : item.severity === "warning" ? <TriangleAlert aria-hidden="true" className="size-5 text-amber-600" /> : <Info aria-hidden="true" className="size-5 text-primary" /> }
+function action(item: NotificationItem) {
+  if (item.entityType === "product") return "/inventory"
+  if (item.entityType === "opportunity") return "/opportunities"
+  if (item.entityType === "invitation") return "/team/accept"
+  return null
+}
+
+export function NotificationsPage() {
+  const query = useNotifications()
+  const mutations = useNotificationMutations()
+  const unread = (query.data ?? []).filter((item) => !item.readAt).length
+  return <section className="space-y-6">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-medium text-primary">Workspace attention</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Notifications</h1><p className="mt-2 text-muted-foreground">Deterministic alerts and actions from your StockPilot workspace.</p></div><Button disabled={!unread || mutations.markAllRead.isPending} onClick={() => mutations.markAllRead.mutate()} variant="outline"><CheckCheck aria-hidden="true" className="mr-2 size-4" />Mark all as read</Button></div>
+    {query.isLoading && <p className="text-muted-foreground">Loading notifications…</p>}
+    {query.isError && <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-sm text-destructive" role="alert">{query.error.message}<Button className="ml-3" onClick={() => void query.refetch()} size="sm" variant="outline">Retry</Button></div>}
+    {query.data && query.data.length === 0 && <div className="rounded-xl border border-dashed border-border p-10 text-center"><Bell aria-hidden="true" className="mx-auto size-8 text-muted-foreground" /><h2 className="mt-3 font-semibold">You’re all caught up</h2><p className="mt-1 text-sm text-muted-foreground">Important deterministic workspace events will appear here.</p></div>}
+    {query.data && query.data.length > 0 && <div className="space-y-3">{query.data.map((item) => { const target = action(item); return <article className={`rounded-xl border p-4 ${item.readAt ? "border-border bg-card" : "border-primary/30 bg-primary/5"}`} key={item.id}><div className="flex gap-3">{icon(item)}<div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="font-semibold">{item.title}</h2><p className="mt-1 text-sm text-muted-foreground">{item.message}</p></div>{!item.readAt && <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">Unread</span>}</div><div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><span>{time(item.createdAt)}</span>{target && <Link className="font-medium text-primary hover:underline" to={target}>{item.entityType === "invitation" ? "Review invitation" : item.entityType === "opportunity" ? "Review opportunity" : "Open inventory"}</Link>}{!item.readAt && <Button disabled={mutations.markRead.isPending} onClick={() => mutations.markRead.mutate(item.id)} size="sm" variant="outline">Mark as read</Button>}</div></div></div></article> })}</div>}
+  </section>
+}
