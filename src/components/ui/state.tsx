@@ -17,7 +17,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
   return (
     <div className={cn("flex flex-col items-center gap-2 rounded-lg border border-dashed border-border p-8 text-center", className)}>
       {Icon && <Icon aria-hidden="true" className="size-8 text-muted-foreground" />}
-      <p className="font-medium text-foreground">{title}</p>
+      <h2 className="font-semibold text-foreground">{title}</h2>
       {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>

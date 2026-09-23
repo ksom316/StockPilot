@@ -14,13 +14,13 @@ export function RecordedSalesTrend({ points, currency }: { points: DailySalesPoi
     label: formatBusinessDate(point.date),
   })), [points])
 
-  if (!points.some((point) => point.saleCount > 0)) return <section aria-labelledby="recorded-sales-trend-title" className="rounded-lg border p-4">
+  if (!points.some((point) => point.saleCount > 0)) return <section aria-labelledby="recorded-sales-trend-title" className="rounded-lg border border-border p-4">
     <h3 className="font-semibold" id="recorded-sales-trend-title">Recorded Sales Trend</h3>
     <p className="mt-2 text-sm text-muted-foreground">No recorded sales in this period.</p>
   </section>
 
   const tickInterval = Math.max(0, Math.ceil(chartData.length / 6) - 1)
-  return <section aria-describedby="recorded-sales-trend-description" aria-labelledby="recorded-sales-trend-title" className="min-w-0 rounded-lg border p-4">
+  return <section aria-describedby="recorded-sales-trend-description" aria-labelledby="recorded-sales-trend-title" className="min-w-0 rounded-lg border border-border p-4">
     <h3 className="font-semibold" id="recorded-sales-trend-title">Recorded Sales Trend</h3>
     <p className="mt-1 text-xs text-muted-foreground" id="recorded-sales-trend-description">Daily Recorded Sales for the selected business dates.</p>
     <ul className="sr-only">{chartData.map((point) => <li key={point.date}>{formatBusinessDate(point.date)}: {formatExpenseMoney(point.recordedSales, currency)} Recorded Sales, {point.saleCount} {point.saleCount === 1 ? "sale" : "sales"}</li>)}</ul>
@@ -39,7 +39,7 @@ export function RecordedSalesTrend({ points, currency }: { points: DailySalesPoi
 }
 
 export function InventoryStatus({ inventory }: { inventory: InventoryOverview }) {
-  if (inventory.activeProducts === 0) return <section aria-labelledby="inventory-status-title" className="rounded-lg border p-4">
+  if (inventory.activeProducts === 0) return <section aria-labelledby="inventory-status-title" className="rounded-lg border border-border p-4">
     <h3 className="font-semibold" id="inventory-status-title">Inventory Status</h3>
     <p className="mt-2 text-sm text-muted-foreground">No active products to show.</p>
   </section>
@@ -52,7 +52,7 @@ export function InventoryStatus({ inventory }: { inventory: InventoryOverview })
     { name: "Out of Stock", value: inventory.outOfStockProducts },
   ].filter((item) => item.value > 0)
 
-  return <section aria-describedby="inventory-status-description" aria-labelledby="inventory-status-title" className="min-w-0 rounded-lg border p-4">
+  return <section aria-describedby="inventory-status-description" aria-labelledby="inventory-status-title" className="min-w-0 rounded-lg border border-border p-4">
     <h3 className="font-semibold" id="inventory-status-title">Inventory Status</h3>
     <p className="mt-1 text-xs text-muted-foreground" id="inventory-status-description">Current stock status; not limited to the selected period.</p>
     <div className="mt-2 grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">

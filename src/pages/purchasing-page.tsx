@@ -2,7 +2,9 @@ import { PackagePlus, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { useMemo, useRef, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 
+import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state"
 import { PurchasingSectionNav } from "@/components/purchasing/purchasing-section-nav"
 import { useBusiness } from "@/features/business/business-context"
 import { formatQuantity } from "@/features/inventory/inventory-format"
@@ -195,23 +197,19 @@ export function PurchasingPage() {
   return (
     <section className="space-y-6">
       <PurchasingSectionNav />
-      <header>
-        <p className="text-sm font-medium text-primary">Purchasing</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Receive stock</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">Record products that have arrived. Stock and latest received costs update when this receipt is saved.</p>
-      </header>
+      <PageHeader description="Record products that have arrived. Stock and latest received costs update when this receipt is saved." eyebrow="Purchasing" title="Receive stock" />
 
       {success && <div aria-live="polite" className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/25 bg-primary/5 p-4" role="status"><div><p className="font-semibold">Receipt recorded</p><p className="mt-1 text-sm">Reference: <span className="font-medium">{success.purchase_reference}</span></p></div><div className="flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link to={`/purchasing/${encodeURIComponent(success.id)}`}>View purchase</Link></Button><Button asChild size="sm" variant="outline"><Link to="/inventory">View inventory</Link></Button><Button onClick={() => setSuccess(null)} size="sm">Receive more stock</Button></div></div>}
       {formError && <p aria-live="assertive" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{formError}</p>}
       {statusMessage && <p aria-live="polite" className="rounded-lg border border-border bg-card p-3 text-sm" role="status">{statusMessage}</p>}
 
-      {products.isLoading && <div className="flex min-h-48 items-center justify-center rounded-xl border border-border bg-card" role="status"><span aria-hidden="true" className="mr-3 size-5 animate-spin rounded-full border-2 border-border border-t-primary" />Loading products...</div>}
-      {products.isError && !products.isLoading && <div className="rounded-xl border border-destructive/25 bg-card p-7 text-center" role="alert"><h2 className="text-lg font-semibold">Products unavailable</h2><p className="mt-2 text-sm text-muted-foreground">We couldn't load this business's products.</p><Button className="mt-4" onClick={() => void products.refetch()} variant="outline">Try again</Button></div>}
-      {!products.isLoading && !products.isError && activeProducts.length === 0 && <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center"><PackagePlus aria-hidden="true" className="mx-auto size-9 text-muted-foreground" /><h2 className="mt-3 text-lg font-semibold">No active products available</h2><p className="mt-1 text-sm text-muted-foreground">Add or reactivate products in Inventory before receiving stock.</p></div>}
+      {products.isLoading && <LoadingState className="flex min-h-48 items-center justify-center rounded-lg border border-border bg-card" label="Loading products…" />}
+      {products.isError && !products.isLoading && <ErrorState onRetry={() => void products.refetch()} title="Products unavailable">We couldn't load this business's products.</ErrorState>}
+      {!products.isLoading && !products.isError && activeProducts.length === 0 && <EmptyState description="Add or reactivate products in Inventory before receiving stock." icon={PackagePlus} title="No active products available" />}
 
       {!products.isLoading && !products.isError && activeProducts.length > 0 && (
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-          <section aria-labelledby="receive-products-heading" className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+          <section aria-labelledby="receive-products-heading" className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><PackagePlus aria-hidden="true" className="size-5" /></span><div><h2 className="font-semibold" id="receive-products-heading">Add received products</h2><p className="text-sm text-muted-foreground">Search the active catalog by name or SKU.</p></div></div>
 
             <div className="mt-5 space-y-4">
@@ -230,7 +228,7 @@ export function PurchasingPage() {
             </div>
           </section>
 
-          <section aria-labelledby="current-receipt-heading" className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+          <section aria-labelledby="current-receipt-heading" className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold" id="current-receipt-heading">Current receipt</h2><p aria-live="polite" className="mt-1 text-sm text-muted-foreground">{items.length} {items.length === 1 ? "item" : "items"}</p></div>{items.length > 0 && <Button disabled={pending} onClick={() => { markMaterialChange(); setItems([]) }} size="sm" variant="outline"><RotateCcw aria-hidden="true" className="mr-1.5 size-4" />Clear receipt</Button>}</div>
             {items.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border p-6 text-center"><p className="font-medium">Your receipt is empty</p><p className="mt-1 text-sm text-muted-foreground">Add received stock to begin.</p></div> : <ul aria-label="Items in current receipt" className="mt-4 divide-y divide-border">{items.map((line) => {
               const lineTotal = calculatePurchaseLineTotal(line.quantity, line.unitCost)
