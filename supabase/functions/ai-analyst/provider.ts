@@ -1,4 +1,4 @@
-import { AnalystError } from "./errors.ts"
+import { AnalystError, type ProviderDiagnostics } from "./errors.ts"
 import type { AnalystProviderInput } from "./grounding.ts"
 
 export interface ProviderUsage {
@@ -12,6 +12,7 @@ export interface AnalystProviderResult {
   model: string
   latencyMs: number
   usage: ProviderUsage
+  diagnostics?: ProviderDiagnostics
 }
 
 export interface AiProvider {
@@ -27,8 +28,9 @@ export interface OpenRouterConfig {
 }
 
 interface OpenRouterEnvelope {
-  choices?: Array<{ message?: { content?: unknown } }>
+  choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }>
   usage?: { prompt_tokens?: unknown; completion_tokens?: unknown }
+  model?: unknown
 }
 
 function tokenCount(value: unknown): number | null {
@@ -89,27 +91,58 @@ export class OpenRouterProvider implements AiProvider {
         throw new AnalystError(503, "PROVIDER_UNAVAILABLE", "The AI provider is unavailable.")
       }
       let envelope: OpenRouterEnvelope
+      let body = ""
       try {
-        envelope = await response.json() as OpenRouterEnvelope
+        body = await response.text()
+        envelope = JSON.parse(body) as OpenRouterEnvelope
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") throw error
-        throw new AnalystError(502, "INVALID_PROVIDER_RESPONSE", "The AI provider returned an invalid response.")
+        throw new AnalystError(502, "INVALID_PROVIDER_RESPONSE", "The AI provider returned an invalid response.", {
+          failureStage: "body_not_json",
+          httpStatus: response.status,
+          configuredModel: this.config.model,
+          responseContentType: response.headers.get("content-type") ?? undefined,
+          contentLength: body?.length,
+        })
       }
       const content = envelope.choices?.[0]?.message?.content
       if (typeof content !== "string") {
-        throw new AnalystError(502, "INVALID_PROVIDER_RESPONSE", "The AI provider returned an invalid response.")
+        throw new AnalystError(502, "INVALID_PROVIDER_RESPONSE", "The AI provider returned an invalid response.", {
+          failureStage: "missing_text_content",
+          httpStatus: response.status,
+          configuredModel: this.config.model,
+          returnedModel: typeof envelope.model === "string" ? envelope.model : undefined,
+          finishReason: typeof envelope.choices?.[0]?.finish_reason === "string" ? envelope.choices[0].finish_reason : undefined,
+          responseContentType: response.headers.get("content-type") ?? undefined,
+        })
       }
       let parsed: unknown
       try {
         parsed = JSON.parse(content)
       } catch {
-        throw new AnalystError(502, "INVALID_PROVIDER_RESPONSE", "The AI provider returned an invalid response.")
+        throw new AnalystError(502, "INVALID_PROVIDER_RESPONSE", "The AI provider returned an invalid response.", {
+          failureStage: "content_not_json",
+          httpStatus: response.status,
+          configuredModel: this.config.model,
+          returnedModel: typeof envelope.model === "string" ? envelope.model : undefined,
+          finishReason: typeof envelope.choices?.[0]?.finish_reason === "string" ? envelope.choices[0].finish_reason : undefined,
+          responseContentType: response.headers.get("content-type") ?? undefined,
+          contentLength: content.length,
+        })
       }
       return {
         response: parsed,
         provider: "openrouter",
         model: this.config.model as string,
         latencyMs: Date.now() - started,
+        diagnostics: {
+          httpStatus: response.status,
+          configuredModel: this.config.model,
+          returnedModel: typeof envelope.model === "string" ? envelope.model : undefined,
+          finishReason: typeof envelope.choices?.[0]?.finish_reason === "string" ? envelope.choices[0].finish_reason : undefined,
+          responseContentType: response.headers.get("content-type") ?? undefined,
+          contentLength: content.length,
+        },
         usage: {
           inputTokens: tokenCount(envelope.usage?.prompt_tokens),
           outputTokens: tokenCount(envelope.usage?.completion_tokens),

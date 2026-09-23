@@ -4,9 +4,10 @@ import {
   validateProviderResponse,
   type AnalystPeriod,
   type AnalystResponse,
+  type ProviderResponse,
 } from "./contract.ts"
 import { buildEvidenceRegistry, hydrateEvidence, suggestedQuestions, unavailableDomainResponse } from "./evidence.ts"
-import { AnalystError, asAnalystError, type ErrorCode } from "./errors.ts"
+import { AnalystError, asAnalystError, type ErrorCode, type ProviderDiagnostics } from "./errors.ts"
 import { buildProviderInput } from "./grounding.ts"
 import type { AiProvider, AnalystProviderResult } from "./provider.ts"
 
@@ -62,6 +63,14 @@ function failureMetadata(error: AnalystError, result?: AnalystProviderResult): C
     inputTokens: result?.usage.inputTokens ?? null,
     outputTokens: result?.usage.outputTokens ?? null,
     latencyMs: result?.latencyMs ?? null,
+  }
+}
+
+function failureDiagnostics(error: AnalystError, result?: AnalystProviderResult): ProviderDiagnostics | undefined {
+  if (error.code !== "INVALID_PROVIDER_RESPONSE") return undefined
+  return {
+    ...(result?.diagnostics ?? {}),
+    ...(error.diagnostics ?? {}),
   }
 }
 
@@ -124,7 +133,19 @@ export function createAnalystHandler(
       providerResult = await dependencies.provider.analyze(
         buildProviderInput(context, input.question, [...registry.keys()]),
       )
-      const providerResponse = validateProviderResponse(providerResult.response)
+      let providerResponse: ProviderResponse
+      try {
+        providerResponse = validateProviderResponse(providerResult.response)
+      } catch (caught) {
+        const error = asAnalystError(caught)
+        if (error.code === "INVALID_PROVIDER_RESPONSE") {
+          throw new AnalystError(error.status, error.code, error.message, {
+            ...(providerResult.diagnostics ?? {}),
+            failureStage: "schema_invalid",
+          })
+        }
+        throw caught
+      }
       const hydrated = hydrateEvidence(providerResponse.evidenceRefs, registry)
       const limitations = [...providerResponse.limitations]
       if (hydrated.removedUnknown && limitations.length < 5) {
@@ -166,7 +187,12 @@ export function createAnalystHandler(
           dependencies.log({ requestId, result: "usage_completion_failed" })
         }
       }
-      dependencies.log({ requestId, result: "failed", errorCategory: error.code })
+      dependencies.log({
+        requestId,
+        result: "failed",
+        errorCategory: error.code,
+        ...failureDiagnostics(error, providerResult),
+      })
       return json(error.status, { requestId, error: { code: error.code, message: error.message } }, cors)
     }
   }

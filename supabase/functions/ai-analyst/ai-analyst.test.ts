@@ -62,6 +62,7 @@ function setup(options: {
 } = {}) {
   const provider = options.provider ?? new FakeProvider()
   const completions: CompletionMetadata[] = []
+  const logs = vi.fn()
   const captured: { token?: string; businessId?: string; startDate?: string; endDate?: string } = {}
   const dependencies: AnalystDependencies = {
     provider,
@@ -79,12 +80,13 @@ function setup(options: {
     },
     async reserveQuota() { return options.reservation ?? "RESERVED" },
     async completeUsage(_userId, _requestId, metadata) { completions.push(metadata) },
-    log: vi.fn(),
+    log: logs,
   }
   return {
     provider,
     completions,
     captured,
+    logs,
     handler: createAnalystHandler(dependencies, new Set(["http://localhost:5173"])),
   }
 }
@@ -363,13 +365,68 @@ describe("OpenRouter provider", () => {
   it("rejects malformed provider JSON", async () => {
     const fetcher = vi.fn(async () => new Response("not-json", { status: 200 }))
     await expect(new OpenRouterProvider({ apiKey: "key", model: "model" }, fetcher).analyze(input))
-      .rejects.toMatchObject({ code: "INVALID_PROVIDER_RESPONSE" })
+      .rejects.toMatchObject({
+        code: "INVALID_PROVIDER_RESPONSE",
+        diagnostics: { failureStage: "body_not_json", httpStatus: 200 },
+      })
+  })
+
+  it.each([
+    [{ choices: [{ message: { content: null } }] }, "null content"],
+    [{ choices: [{}] }, "missing content"],
+  ])("diagnoses %s as missing_text_content", async (body) => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(body), { status: 200 }))
+    await expect(new OpenRouterProvider({ apiKey: "key", model: "model" }, fetcher).analyze(input))
+      .rejects.toMatchObject({
+        code: "INVALID_PROVIDER_RESPONSE",
+        diagnostics: { failureStage: "missing_text_content", httpStatus: 200 },
+      })
+  })
+
+  it("diagnoses plain completion text as content_not_json", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      model: "routed/model",
+      choices: [{ finish_reason: "stop", message: { content: "private completion text" } }],
+    }), { status: 200 }))
+    await expect(new OpenRouterProvider({ apiKey: "key", model: "openrouter/free" }, fetcher).analyze(input))
+      .rejects.toMatchObject({
+        code: "INVALID_PROVIDER_RESPONSE",
+        diagnostics: {
+          failureStage: "content_not_json",
+          returnedModel: "routed/model",
+          finishReason: "stop",
+          contentLength: "private completion text".length,
+        },
+      })
+  })
+
+  it("logs schema_invalid diagnostics without provider or request content", async () => {
+    const provider = new FakeProvider()
+    provider.result.response = {
+      answer: "private completion answer",
+      evidenceRefs: [],
+      limitations: [],
+      privateBusinessLabel: "private business",
+    }
+    const environment = setup({ provider })
+    const response = await environment.handler(request({
+      ...validBody,
+      question: "private user question",
+    }))
+
+    expect(response.status).toBe(502)
+    const logText = JSON.stringify(environment.logs.mock.calls)
+    expect(logText).toContain("schema_invalid")
+    expect(logText).not.toContain("private completion answer")
+    expect(logText).not.toContain("private user question")
+    expect(logText).not.toContain("private business")
+    expect(logText).not.toContain("sales.recorded_sales")
   })
 
   it("maps an abort during response-body decoding to PROVIDER_TIMEOUT", async () => {
     const fetcher = vi.fn(async () => ({
       ok: true,
-      json: async () => { throw new DOMException("aborted", "AbortError") },
+      text: async () => { throw new DOMException("aborted", "AbortError") },
     }) as Response)
     await expect(new OpenRouterProvider({ apiKey: "key", model: "model" }, fetcher).analyze(input))
       .rejects.toMatchObject({ code: "PROVIDER_TIMEOUT", status: 504 })
