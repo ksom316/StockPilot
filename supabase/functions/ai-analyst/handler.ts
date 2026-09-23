@@ -23,7 +23,7 @@ export interface CompletionMetadata {
 export interface AnalystDependencies {
   provider: AiProvider
   authenticate(token: string): Promise<string>
-  getContext(token: string, businessId: string, period: AnalystPeriod): Promise<unknown>
+  getContext(token: string, businessId: string, period: AnalystPeriod, startDate?: string, endDate?: string): Promise<unknown>
   reserveQuota(userId: string, businessId: string, requestId: string): Promise<"RESERVED" | "USER_HOURLY_LIMIT" | "BUSINESS_DAILY_LIMIT">
   completeUsage(userId: string, requestId: string, metadata: CompletionMetadata): Promise<void>
   log(event: Record<string, unknown>): void
@@ -98,7 +98,7 @@ export function createAnalystHandler(
       const token = bearerToken(request)
       userId = await dependencies.authenticate(token)
       const context = validateContext(
-        await dependencies.getContext(token, input.businessId, input.period),
+        await dependencies.getContext(token, input.businessId, input.period, input.startDate, input.endDate),
         input.period,
       )
       const registry = buildEvidenceRegistry(context)
@@ -179,5 +179,6 @@ export function mapContextError(error: { code?: string; message?: string }): Ana
   if (error.code === "42501") {
     return new AnalystError(403, "ACCESS_DENIED", "You do not have access to AI Analyst for this business.")
   }
+  if (error.code === "22023") return new AnalystError(400, "INVALID_REQUEST", "The selected custom range is invalid.")
   return new AnalystError(500, "INTERNAL_ERROR", "The analysis context could not be loaded.")
 }

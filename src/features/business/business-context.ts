@@ -23,6 +23,7 @@ export interface CompleteOnboardingInput {
   name: string
   businessType: string | null
   enabledModules: OptionalModule[]
+  iconId: BusinessIconId
 }
 
 export interface BusinessContextValue {

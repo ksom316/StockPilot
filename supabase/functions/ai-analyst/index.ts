@@ -43,10 +43,12 @@ const dependencies: AnalystDependencies = {
     }
     return data.user.id
   },
-  async getContext(token: string, businessId: string, period: AnalystPeriod) {
+  async getContext(token: string, businessId: string, period: AnalystPeriod, startDate?: string, endDate?: string) {
     const { data, error } = await callerClient(token).rpc("get_ai_analyst_context", {
       p_business_id: businessId,
       p_period: period,
+      p_start_date: startDate ?? null,
+      p_end_date: endDate ?? null,
     })
     if (error) throw mapContextError(error)
     return data

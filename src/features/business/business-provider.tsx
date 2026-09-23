@@ -33,11 +33,11 @@ export function BusinessProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<WorkspaceState>(emptyState)
   const requestIdRef = useRef(0)
 
-  const resolveBusiness = useCallback(async () => {
+  const resolveBusiness = useCallback(async (options?: { suppressError?: boolean }): Promise<Business | null> => {
     const requestId = ++requestIdRef.current
     if (!user || !supabase) {
       setState(emptyState)
-      return
+      return null
     }
 
     const { data: membershipData, error: membershipError } = await supabase
@@ -48,21 +48,21 @@ export function BusinessProvider({ children }: PropsWithChildren) {
       .limit(2)
 
     if (membershipError) {
-      if (requestId !== requestIdRef.current) return
-      setState({ ...emptyState, resolvedUserId: user.id, error: "We couldn't load your workspace. Please try again." })
-      return
+      if (requestId !== requestIdRef.current) return null
+      setState({ ...emptyState, resolvedUserId: user.id, error: options?.suppressError ? null : "We couldn't load your workspace. Please try again." })
+      return null
     }
 
     if (!membershipData || membershipData.length === 0) {
-      if (requestId !== requestIdRef.current) return
+      if (requestId !== requestIdRef.current) return null
       setState({ ...emptyState, resolvedUserId: user.id })
-      return
+      return null
     }
 
     if (membershipData.length > 1) {
-      if (requestId !== requestIdRef.current) return
+      if (requestId !== requestIdRef.current) return null
       setState({ ...emptyState, resolvedUserId: user.id, error: "This account has multiple workspaces. Workspace switching is not available yet." })
-      return
+      return null
     }
 
     const activeMembership = membershipData[0]
@@ -82,12 +82,12 @@ export function BusinessProvider({ children }: PropsWithChildren) {
       .eq("enabled", true)
 
     if (moduleError) {
-      if (requestId !== requestIdRef.current) return
-      setState({ ...emptyState, resolvedUserId: user.id, error: "We couldn't load your workspace modules. Please try again." })
-      return
+      if (requestId !== requestIdRef.current) return null
+      setState({ ...emptyState, resolvedUserId: user.id, error: options?.suppressError ? null : "We couldn't load your workspace modules. Please try again." })
+      return null
     }
 
-    if (requestId !== requestIdRef.current) return
+    if (requestId !== requestIdRef.current) return null
     setState({
       resolvedUserId: user.id,
       business: {
@@ -107,6 +107,14 @@ export function BusinessProvider({ children }: PropsWithChildren) {
       enabledModules: (moduleData ?? []).map((item) => item.module as OptionalModule),
       error: null,
     })
+    return {
+      id: relatedBusiness.id,
+      name: relatedBusiness.name,
+      businessType: relatedBusiness.business_type,
+      currency: relatedBusiness.currency,
+      timezone: relatedBusiness.timezone,
+      iconId: relatedBusiness.icon_id ?? "store",
+    }
   }, [user])
 
   useEffect(() => {
@@ -126,9 +134,14 @@ export function BusinessProvider({ children }: PropsWithChildren) {
       p_name: input.name,
       p_business_type: input.businessType,
       p_enabled_modules: input.enabledModules,
+      p_icon_id: input.iconId,
     })
     if (error) {
-      if (error.code === "23505") throw new Error("A business is already connected to this account. Refresh to continue.")
+      const isAlreadyOnboardedConflict = error.code === "23505" && /active business membership already exists/i.test(error.message ?? "")
+      if (isAlreadyOnboardedConflict) {
+        const business = await resolveBusiness({ suppressError: true })
+        if (business) return
+      }
       throw new Error("We couldn't finish your business setup. Please try again.")
     }
 
@@ -171,7 +184,7 @@ export function BusinessProvider({ children }: PropsWithChildren) {
     isLoading,
     onboardingRequired: Boolean(user && !isLoading && !resolvedState.business && !resolvedState.error),
     error: resolvedState.error,
-    refresh: resolveBusiness,
+    refresh: async () => { await resolveBusiness() },
     completeOnboarding,
     setModuleEnabled,
     setBusinessIcon,

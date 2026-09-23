@@ -66,6 +66,7 @@ export function buildNavGroups(enabledModules: readonly OptionalModule[], role: 
       items: [
         ...(has("customers") ? [{ label: "Customers", to: "/customers", icon: Users }] : []),
         ...(has("expenses") && roleIn(managerRoles) ? [{ label: "Finance", to: "/finance", icon: Wallet }] : []),
+        ...(has("analytics") ? [{ label: "Analytics", to: "/analytics", icon: BarChart3 }] : []),
         { label: "Reports", to: "/reports", icon: BarChart3 },
       ],
     },
@@ -88,7 +89,7 @@ export function buildNavGroups(enabledModules: readonly OptionalModule[], role: 
 
   // Modules that are enabled but don't yet have a workspace surface (e.g. "analytics")
   // are shown as disabled entries so their presence is never a dead link.
-  const recognized: OptionalModule[] = ["sales", "purchasing", "customers", "expenses", "smart_insights", "ai_analyst", "team"]
+  const recognized: OptionalModule[] = ["sales", "purchasing", "customers", "expenses", "analytics", "smart_insights", "ai_analyst", "team"]
   const unrecognized = enabledModules.filter((module) => !recognized.includes(module))
   if (unrecognized.length > 0) {
     groups.push({

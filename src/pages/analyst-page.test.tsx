@@ -47,6 +47,30 @@ describe("AnalystPage", () => {
     expect(screen.getByText(answer.limitations[0])).toBeInTheDocument()
   })
 
+  it("sends exact business-local custom dates", async () => {
+    const user = userEvent.setup()
+    mocks.askAnalyst.mockResolvedValue(answer)
+    renderPage()
+    await user.selectOptions(screen.getByRole("combobox", { name: "Analysis period" }), "CUSTOM")
+    fireEvent.change(screen.getByLabelText("Analysis start date"), { target: { value: "2026-09-01" } })
+    fireEvent.change(screen.getByLabelText("Analysis end date"), { target: { value: "2026-09-15" } })
+    await user.type(screen.getByRole("textbox", { name: "Question" }), "What changed?")
+    await user.click(screen.getByRole("button", { name: "Ask Analyst" }))
+    expect(mocks.askAnalyst).toHaveBeenCalledWith({ businessId: testBusiness.id, period: "CUSTOM", question: "What changed?", startDate: "2026-09-01", endDate: "2026-09-15" })
+  })
+
+  it("rejects reversed custom dates without requesting Analyst", async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.selectOptions(screen.getByRole("combobox", { name: "Analysis period" }), "CUSTOM")
+    fireEvent.change(screen.getByLabelText("Analysis start date"), { target: { value: "2026-09-20" } })
+    fireEvent.change(screen.getByLabelText("Analysis end date"), { target: { value: "2026-09-01" } })
+    await user.type(screen.getByRole("textbox", { name: "Question" }), "What changed?")
+    await user.click(screen.getByRole("button", { name: "Ask Analyst" }))
+    expect(mocks.askAnalyst).not.toHaveBeenCalled()
+    expect(screen.getByRole("alert")).toHaveTextContent(/valid business-local custom range/i)
+  })
+
   it("does not request when the question is empty or over 800 characters", async () => {
     const user = userEvent.setup()
     renderPage()

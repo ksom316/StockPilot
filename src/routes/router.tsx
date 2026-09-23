@@ -43,6 +43,7 @@ export const routes = [
               { path: "/inventory/movements", element: <InventoryMovementsPage /> },
               { path: "/settings/modules", element: <ModuleSettingsPage /> },
               { path: "/reports", lazy: async () => { const module = await import("@/pages/reports-page"); return { Component: module.ReportsPage, HydrateFallback: RouteLoadingScreen } } },
+              { element: <RequireModule module="analytics" />, children: [{ path: "/analytics", lazy: async () => { const module = await import("@/pages/analytics-page"); return { Component: module.AnalyticsPage, HydrateFallback: RouteLoadingScreen } } }] },
               { path: "/notifications", lazy: async () => {
                 const module = await import("@/pages/notifications-page")
                 return { Component: module.NotificationsPage, HydrateFallback: RouteLoadingScreen }

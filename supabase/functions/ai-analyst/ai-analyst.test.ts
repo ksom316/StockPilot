@@ -61,7 +61,7 @@ function setup(options: {
 } = {}) {
   const provider = options.provider ?? new FakeProvider()
   const completions: CompletionMetadata[] = []
-  const captured: { token?: string; businessId?: string } = {}
+  const captured: { token?: string; businessId?: string; startDate?: string; endDate?: string } = {}
   const dependencies: AnalystDependencies = {
     provider,
     async authenticate(token) {
@@ -69,9 +69,11 @@ function setup(options: {
       captured.token = token
       return "user-id"
     },
-    async getContext(_token, businessId) {
+    async getContext(_token, businessId, _period, startDate, endDate) {
       if (options.contextError) throw options.contextError
       captured.businessId = businessId
+      captured.startDate = startDate
+      captured.endDate = endDate
       return options.selectedContext ?? context()
     },
     async reserveQuota() { return options.reservation ?? "RESERVED" },
@@ -113,6 +115,15 @@ describe("AI Analyst handler", () => {
     const body = await (await setup({ provider }).handler(request(validBody))).json()
     expect(body.evidence).toHaveLength(1)
     expect(body.limitations).toContain("One or more unsupported evidence references were omitted.")
+  })
+
+  it("passes custom dates through to the deterministic context request", async () => {
+    const customContext = context({ period: { key: "CUSTOM", startDate: "2026-09-01", endDate: "2026-09-15", asOfBusinessDate: "2026-09-22", timezone: "UTC", currentPartialDateExcluded: false } })
+    const env = setup({ selectedContext: customContext })
+    const body = { businessId: BUSINESS_ID, period: "CUSTOM", startDate: "2026-09-01", endDate: "2026-09-15", question: "How were sales?" }
+    const response = await env.handler(request(body))
+    expect(response.status).toBe(200)
+    expect(env.captured).toMatchObject({ businessId: BUSINESS_ID, startDate: "2026-09-01", endDate: "2026-09-15" })
   })
 
   it.each([

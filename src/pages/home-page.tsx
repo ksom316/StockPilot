@@ -1,18 +1,38 @@
+import { ArrowRight, BarChart3, Boxes, Check, CircleUserRound, FileChartColumn, Lightbulb, PackageCheck, ShieldCheck, Sparkles, Target, UsersRound, Wallet } from "lucide-react"
+import type { ComponentType, ReactNode } from "react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 
+const capabilityGroups = [
+  { title: "Run the business", description: "Keep daily operations clear and dependable.", items: [[Boxes, "Inventory"], [PackageCheck, "Sales & Purchasing"], [CircleUserRound, "Customers"]] },
+  { title: "Understand the business", description: "Turn recorded activity into useful visibility.", items: [[Wallet, "Expenses & profitability"], [BarChart3, "Analytics"], [Lightbulb, "Smart Inventory"]] },
+  { title: "Work with confidence", description: "Give the right people the right context.", items: [[Target, "Business Opportunities"], [Sparkles, "AI Analyst"], [UsersRound, "Team & permissions"]] },
+] as const
+
 export function HomePage() {
-  return (
-    <section className="max-w-2xl space-y-5">
-      <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">Inventory, clearly managed</p>
-      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">A focused foundation for growing businesses.</h1>
-      <p className="text-lg leading-8 text-muted-foreground">
-        StockPilot starts with inventory and grows through optional business modules when you need them.
-      </p>
-      <Button asChild>
-        <Link to="/signup">Get started</Link>
-      </Button>
+  return <div className="mx-auto max-w-7xl space-y-20 pb-8 sm:space-y-28">
+    <section className="grid items-center gap-10 pt-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] lg:gap-16 lg:pt-12">
+      <div className="max-w-2xl"><p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Inventory-first business visibility</p><h1 className="mt-5 text-4xl font-semibold tracking-tight text-foreground sm:text-6xl sm:leading-[1.05]">Know what is happening in your business.</h1><p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">StockPilot starts with inventory, then grows with the business tools you actually need. Keep operations grounded in recorded data and make attention easier to see.</p><div className="mt-8 flex flex-wrap items-center gap-3"><Button asChild size="lg"><Link to="/signup">Get started<ArrowRight aria-hidden="true" className="ml-2 size-4" /></Link></Button><Button asChild size="lg" variant="outline"><Link to="/login">Sign in</Link></Button></div><p className="mt-4 text-sm text-muted-foreground">Start with Inventory. Add optional modules when the business is ready.</p></div>
+      <ProductPreview />
     </section>
-  )
+
+    <section aria-labelledby="capabilities-title" className="space-y-8"><div className="max-w-2xl"><p className="text-sm font-medium text-primary">One workspace, the right amount of structure</p><h2 className="mt-2 text-3xl font-semibold tracking-tight" id="capabilities-title">Built around how a business actually runs.</h2></div><div className="grid gap-4 lg:grid-cols-3">{capabilityGroups.map((group) => <CapabilityGroup description={group.description} items={group.items} key={group.title} title={group.title} />)}</div></section>
+
+    <section className="grid gap-8 rounded-2xl border border-border bg-muted/30 p-6 sm:p-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center"><div><p className="text-sm font-medium text-primary">Modular by design</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">Keep the core simple. Enable what fits.</h2><p className="mt-4 leading-7 text-muted-foreground">Inventory is always there. Sales, Purchasing, Expenses, Customers, Analytics, intelligence, and Team tools can be enabled as your operating model grows.</p></div><div className="grid gap-3 sm:grid-cols-2"><ModulePill label="Inventory core" primary /><ModulePill label="Optional business modules" /><ModulePill label="Role-aware access" /><ModulePill label="Business-local dates" /></div></section>
+
+    <section aria-labelledby="intelligence-title" className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:items-center"><div><p className="text-sm font-medium text-primary">From activity to attention</p><h2 className="mt-2 text-3xl font-semibold tracking-tight" id="intelligence-title">Intelligence stays grounded in what was recorded.</h2><p className="mt-4 leading-7 text-muted-foreground">Analytics helps you see change over time. Deterministic StockPilot tools surface inventory attention and opportunities. AI Analyst can explain available facts when you choose to use it.</p></div><div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8"><div className="grid gap-3 sm:grid-cols-4 sm:items-center"><FlowStep label="Recorded data" /><ArrowRight className="hidden size-5 text-muted-foreground sm:block" /><FlowStep label="Analytics" /><ArrowRight className="hidden size-5 text-muted-foreground sm:block" /><FlowStep label="Attention" /><ArrowRight className="hidden size-5 text-muted-foreground sm:block" /><FlowStep label="Optional AI explanation" /></div><p className="mt-6 border-t border-border pt-4 text-sm text-muted-foreground">You control which modules are available to your workspace.</p></div></section>
+
+    <section className="rounded-2xl bg-sidebar px-6 py-10 text-sidebar-foreground sm:px-10 sm:py-14"><div className="max-w-2xl"><p className="text-sm font-medium text-sidebar-primary">A clearer first step</p><h2 className="mt-2 text-3xl font-semibold tracking-tight text-sidebar-accent-foreground">Start with a better view of stock.</h2><p className="mt-4 leading-7 text-sidebar-muted-foreground">Set up your workspace, keep Inventory at the center, and add more visibility as your business needs it.</p><Button asChild className="mt-7" size="lg"><Link to="/signup">Get started<ArrowRight aria-hidden="true" className="ml-2 size-4" /></Link></Button></div></section>
+    <footer className="flex flex-col gap-3 border-t border-border pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"><span className="font-semibold text-foreground">StockPilot</span><span>Inventory-first visibility for growing businesses.</span></footer>
+  </div>
 }
+
+function ProductPreview() {
+  return <div aria-label="StockPilot product preview" className="relative rounded-2xl border border-border bg-card p-4 shadow-[0_18px_55px_-28px_rgba(15,23,42,0.45)] sm:p-6"><div className="flex items-center justify-between border-b border-border pb-4"><div className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Boxes aria-hidden="true" className="size-4" /></span><span className="text-sm font-semibold">Workspace overview</span></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">Business view</span></div><div className="mt-5 grid gap-3 sm:grid-cols-3"><PreviewCard label="Inventory" icon={<Boxes className="size-4" />} tone="primary" /><PreviewCard label="Activity" icon={<BarChart3 className="size-4" />} /><PreviewCard label="Attention" icon={<Target className="size-4" />} /></div><div className="mt-5 rounded-xl border border-border p-4"><div className="flex items-center justify-between"><div><p className="text-sm font-semibold">Recorded activity</p><p className="mt-1 text-xs text-muted-foreground">Trends and changes, in context.</p></div><FileChartColumn className="size-5 text-primary" /></div><div className="mt-5 flex h-28 items-end gap-2" aria-hidden="true">{[28, 44, 35, 60, 48, 76, 66, 88, 72, 94].map((height, index) => <span className={`flex-1 rounded-t-sm ${index > 6 ? "bg-primary" : "bg-primary/25"}`} key={height} style={{ height: `${height}%` }} />)}</div></div><div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground"><ShieldCheck className="size-4 shrink-0 text-primary" />Role-aware access and business-scoped data.</div></div>
+}
+
+function PreviewCard({ label, icon, tone = "neutral" }: { label: string; icon: ReactNode; tone?: "primary" | "neutral" }) { return <div className="rounded-xl border border-border p-3"><span className={`flex size-8 items-center justify-center rounded-lg ${tone === "primary" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{icon}</span><p className="mt-3 text-sm font-medium">{label}</p><div className="mt-2 h-1.5 w-3/4 rounded-full bg-muted" /></div> }
+function CapabilityGroup({ title, description, items }: { title: string; description: string; items: readonly (readonly [ComponentType<{ className?: string }>, string])[] }) { return <article className="rounded-xl border border-border bg-card p-5"><h3 className="font-semibold">{title}</h3><p className="mt-1.5 text-sm leading-6 text-muted-foreground">{description}</p><ul className="mt-5 space-y-3">{items.map(([Icon, label]) => <li className="flex items-center gap-3 text-sm" key={label}><span className="flex size-8 items-center justify-center rounded-lg bg-muted text-primary"><Icon aria-hidden="true" className="size-4" /></span>{label}</li>)}</ul></article> }
+function ModulePill({ label, primary = false }: { label: string; primary?: boolean }) { return <div className={`flex items-center gap-2 rounded-xl border p-4 text-sm ${primary ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}><Check aria-hidden="true" className="size-4 text-primary" />{label}</div> }
+function FlowStep({ label }: { label: string }) { return <div className="rounded-xl border border-border bg-muted/35 p-4 text-center text-sm font-medium">{label}</div> }

@@ -4,12 +4,14 @@ import { PageHeader } from "@/components/layout/page-header"
 import { useBusiness } from "@/features/business/business-context"
 import { AnalystDataError, analystErrorMessage, analystPeriods, type AnalystPeriod, type AnalystResponse } from "@/features/analyst/analyst-types"
 import { askAnalyst } from "@/features/analyst/analyst-service"
+import { getAnalyticsDateRange } from "@/features/analytics/analytics-period"
 
 const periodLabels: Record<AnalystPeriod, string> = {
   TODAY: "Today",
   THIS_WEEK: "This week",
   THIS_MONTH: "This month",
   LAST_30_COMPLETED_DAYS: "Last 30 completed days",
+  CUSTOM: "Custom range",
 }
 
 const inputClass = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
@@ -18,10 +20,13 @@ export function AnalystPage() {
   const { business, enabledModules } = useBusiness()
   const [period, setPeriod] = useState<AnalystPeriod>("THIS_MONTH")
   const [question, setQuestion] = useState("")
+  const [customStart, setCustomStart] = useState("")
+  const [customEnd, setCustomEnd] = useState("")
   const [result, setResult] = useState<AnalystResponse | null>(null)
   const [error, setError] = useState<AnalystDataError | null>(null)
   const [isPending, setIsPending] = useState(false)
   const suggestions = useMemo(() => starterQuestions(enabledModules), [enabledModules])
+  const customRange = period === "CUSTOM" && business ? getAnalyticsDateRange("custom", business.timezone, new Date(), customStart, customEnd) : null
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -30,10 +35,14 @@ export function AnalystPage() {
       setError(new AnalystDataError("Enter a question between 1 and 800 characters.", "INVALID_REQUEST", 400))
       return
     }
+    if (period === "CUSTOM" && !customRange) {
+      setError(new AnalystDataError("Choose a valid business-local custom range.", "INVALID_REQUEST", 400))
+      return
+    }
     setError(null)
     setIsPending(true)
     try {
-      setResult(await askAnalyst({ businessId: business.id, period, question: trimmed }))
+      setResult(await askAnalyst({ businessId: business.id, period, question: trimmed, ...(period === "CUSTOM" ? { startDate: customStart, endDate: customEnd } : {}) }))
     } catch (cause) {
       setError(cause instanceof AnalystDataError ? new AnalystDataError(analystErrorMessage(cause.code, cause.status), cause.code, cause.status) : new AnalystDataError(analystErrorMessage()))
     } finally {
@@ -46,9 +55,11 @@ export function AnalystPage() {
 
     <form className="rounded-xl border border-primary/20 bg-card p-5 sm:p-6" onSubmit={(event) => { void submit(event).catch(() => undefined) }}>
       <div className="grid gap-4 sm:grid-cols-[minmax(0,0.35fr)_minmax(0,1fr)] sm:items-start">
-        <label className="space-y-1.5 text-sm"><span className="font-medium">Period</span><select aria-label="Analysis period" className={inputClass} onChange={(event) => setPeriod(event.target.value as AnalystPeriod)} value={period}>{analystPeriods.map((value) => <option key={value} value={value}>{periodLabels[value]}</option>)}</select></label>
+        <label className="space-y-1.5 text-sm"><span className="font-medium">Period</span><select aria-label="Analysis period" className={inputClass} onChange={(event) => { setError(null); setPeriod(event.target.value as AnalystPeriod) }} value={period}>{analystPeriods.map((value) => <option key={value} value={value}>{periodLabels[value]}</option>)}</select></label>
+        {period === "CUSTOM" && <><label className="space-y-1.5 text-sm"><span className="font-medium">From</span><input aria-label="Analysis start date" className={inputClass} onChange={(event) => setCustomStart(event.target.value)} type="date" value={customStart} /></label><label className="space-y-1.5 text-sm"><span className="font-medium">To</span><input aria-label="Analysis end date" className={inputClass} onChange={(event) => setCustomEnd(event.target.value)} type="date" value={customEnd} /></label></>}
         <label className="space-y-1.5 text-sm"><span className="font-medium">Question</span><textarea aria-describedby="analyst-question-help" aria-invalid={Boolean(error?.code === "INVALID_REQUEST")} className={`${inputClass} min-h-28 resize-y`} maxLength={800} onChange={(event) => setQuestion(event.target.value)} placeholder="What should I know about this period?" value={question} /></label>
       </div>
+      {period === "CUSTOM" && !customRange && <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Choose valid business-local dates in order. Custom ranges cannot include future dates or more than 366 calendar days.</p>}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-muted-foreground" id="analyst-question-help">{question.length}/800 characters · Answers use the selected business and period.</p><Button disabled={isPending || !question.trim()} type="submit">{isPending ? "Analyzing…" : "Ask Analyst"}</Button></div>
       {error && <p className="mt-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{error.message}</p>}
     </form>

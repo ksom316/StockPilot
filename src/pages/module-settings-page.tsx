@@ -78,7 +78,7 @@ export function ModuleSettingsPage() {
           {optionalModules.map((module) => {
             const enabled = enabledModules.includes(module.key)
             const pending = pendingModule === module.key
-            const availability = module.key === "sales" || module.key === "expenses" || module.key === "ai_analyst" ? "Available" : "Coming soon"
+            const availability = module.key === "sales" || module.key === "expenses" || module.key === "analytics" || module.key === "ai_analyst" ? "Available" : "Coming soon"
             return (
               <li className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center" key={module.key}>
                 <div className="min-w-0 flex-1"><h3 className="break-words font-medium">{module.label}</h3><p className="mt-1 break-words text-sm leading-5 text-muted-foreground">{module.description}</p><p className="mt-2 text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"} · {availability}</p></div>

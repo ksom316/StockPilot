@@ -1,10 +1,12 @@
-export const analystPeriods = ["TODAY", "THIS_WEEK", "THIS_MONTH", "LAST_30_COMPLETED_DAYS"] as const
+export const analystPeriods = ["TODAY", "THIS_WEEK", "THIS_MONTH", "LAST_30_COMPLETED_DAYS", "CUSTOM"] as const
 export type AnalystPeriod = (typeof analystPeriods)[number]
 
 export interface AnalystRequest {
   businessId: string
   period: AnalystPeriod
   question: string
+  startDate?: string
+  endDate?: string
 }
 
 export interface AnalystEvidence {

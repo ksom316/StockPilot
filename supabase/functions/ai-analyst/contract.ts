@@ -5,6 +5,7 @@ export const PERIODS = [
   "THIS_WEEK",
   "THIS_MONTH",
   "LAST_30_COMPLETED_DAYS",
+  "CUSTOM",
 ] as const
 
 export type AnalystPeriod = (typeof PERIODS)[number]
@@ -13,6 +14,8 @@ export interface AnalystRequest {
   businessId: string
   period: AnalystPeriod
   question: string
+  startDate?: string
+  endDate?: string
 }
 
 export interface AnalystContext {
@@ -54,6 +57,7 @@ export interface AnalystResponse {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const FORBIDDEN_CONTEXT_KEY = /(customer|supplier|contact|email|phone|note|description|api.?key|secret|prompt|answer)/i
 const CONTEXT_KEYS = new Set([
   "schemaVersion",
@@ -84,7 +88,8 @@ export function parseAnalystRequest(value: unknown): AnalystRequest {
   if (!isRecord(value)) {
     throw new AnalystError(400, "INVALID_REQUEST", "Request body must be a JSON object.")
   }
-  const expected = ["businessId", "period", "question"]
+  const isCustom = value.period === "CUSTOM"
+  const expected = isCustom ? ["businessId", "period", "question", "startDate", "endDate"] : ["businessId", "period", "question"]
   const keys = Object.keys(value)
   if (keys.length !== expected.length || keys.some((key) => !expected.includes(key))) {
     throw new AnalystError(400, "INVALID_REQUEST", "Request body contains unsupported fields.")
@@ -98,6 +103,11 @@ export function parseAnalystRequest(value: unknown): AnalystRequest {
   if (typeof value.question !== "string") {
     throw new AnalystError(400, "INVALID_REQUEST", "question must be a string.")
   }
+  if (isCustom) {
+    if (typeof value.startDate !== "string" || typeof value.endDate !== "string" || !ISO_DATE.test(value.startDate) || !ISO_DATE.test(value.endDate) || value.startDate > value.endDate) {
+      throw new AnalystError(400, "INVALID_REQUEST", "Custom range dates must be valid and in order.")
+    }
+  }
   const question = value.question.trim()
   if (question.length === 0 || question.length > 800) {
     throw new AnalystError(400, "INVALID_REQUEST", "question must contain 1 to 800 characters.")
@@ -106,6 +116,7 @@ export function parseAnalystRequest(value: unknown): AnalystRequest {
     businessId: value.businessId,
     period: value.period as AnalystPeriod,
     question,
+    ...(isCustom ? { startDate: value.startDate as string, endDate: value.endDate as string } : {}),
   }
 }
 

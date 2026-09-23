@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/form-field"
 import { useBusiness } from "@/features/business/business-context"
 import { getModuleLabel, optionalModules, type OptionalModule } from "@/features/business/modules"
+import { BusinessIcon, businessIconOptions, type BusinessIconId } from "@/features/business/business-icons"
 
 const steps = ["Welcome", "Business", "Modules", "Review"]
 const businessTypes = ["Retail", "Electronics", "Fashion", "Cosmetics", "Grocery / Mini-mart", "Pharmacy", "Other"]
@@ -17,6 +18,7 @@ export function OnboardingPage() {
   const [businessName, setBusinessName] = useState("")
   const [businessTypeChoice, setBusinessTypeChoice] = useState("")
   const [customBusinessType, setCustomBusinessType] = useState("")
+  const [businessIconId, setBusinessIconId] = useState<BusinessIconId>("store")
   const [selectedModules, setSelectedModules] = useState<OptionalModule[]>([])
   const [errors, setErrors] = useState<{ name?: string; type?: string }>({})
   const [formError, setFormError] = useState("")
@@ -55,6 +57,7 @@ export function OnboardingPage() {
         name: businessName.trim(),
         businessType,
         enabledModules: selectedModules,
+        iconId: businessIconId,
       })
       navigate("/dashboard", { replace: true })
     } catch (error) {
@@ -104,6 +107,7 @@ export function OnboardingPage() {
                 {businessTypeChoice === "Other" && <FormField autoFocus error={errors.type} id="custom-business-type" label="Custom business type" maxLength={80} onChange={(event) => setCustomBusinessType(event.target.value)} placeholder="Describe your business" value={customBusinessType} />}
                 {errors.type && businessTypeChoice !== "Other" && <p className="text-sm text-destructive" id="business-type-error">{errors.type}</p>}
               </div>
+              <fieldset className="space-y-2"><legend className="text-sm font-medium">Business icon</legend><p className="text-sm text-muted-foreground">Choose a built-in identity for your workspace.</p><div aria-label="Business icon choices" className="flex flex-wrap gap-2" role="group">{businessIconOptions.map((option) => <button aria-label={option.label} aria-pressed={businessIconId === option.id} className={`flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${businessIconId === option.id ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-muted"}`} key={option.id} onClick={() => setBusinessIconId(option.id)} type="button"><BusinessIcon className="size-4" id={option.id} />{option.label}</button>)}</div></fieldset>
             </div>
             <div className="mt-8 flex justify-between"><Button onClick={() => setStep(0)} type="button" variant="outline"><ChevronLeft className="mr-2 size-4" />Back</Button><Button type="submit">Continue<ChevronRight className="ml-2 size-4" /></Button></div>
           </form>
@@ -140,6 +144,7 @@ export function OnboardingPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">Review your setup</h1>
             <p className="mt-2 text-muted-foreground">Confirm these details before creating your workspace.</p>
             <dl className="mt-7 divide-y divide-border rounded-lg border border-border">
+              <div className="flex items-center gap-3 p-4"><dt className="text-sm text-muted-foreground">Business icon</dt><dd className="flex items-center gap-2 font-medium"><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><BusinessIcon className="size-5" id={businessIconId} /></span>{businessIconOptions.find((option) => option.id === businessIconId)?.label}</dd></div>
               <div className="grid gap-1 p-4 sm:grid-cols-3"><dt className="text-sm text-muted-foreground">Business name</dt><dd className="font-medium sm:col-span-2">{businessName.trim()}</dd></div>
               <div className="grid gap-1 p-4 sm:grid-cols-3"><dt className="text-sm text-muted-foreground">Business type</dt><dd className="font-medium sm:col-span-2">{businessType}</dd></div>
               <div className="grid gap-2 p-4 sm:grid-cols-3"><dt className="text-sm text-muted-foreground">Included tools</dt><dd className="flex flex-wrap gap-2 sm:col-span-2"><span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">Inventory</span>{selectedModules.map((module) => <span className="rounded-full bg-muted px-3 py-1 text-sm" key={module}>{getModuleLabel(module)}</span>)}</dd></div>
