@@ -21,7 +21,7 @@ import type { RecordedSale } from "@/features/sales/sales-types"
 interface CartLine {
   productId: string
   name: string
-  sku: string
+  sku: string | null
   quantity: string
   unitPrice: string
 }
@@ -83,7 +83,7 @@ export function SalesCheckoutPage() {
 
   const activeProducts = useMemo(() => (products.data ?? []).filter((product) => product.isActive), [products.data])
   const query = search.trim().toLocaleLowerCase()
-  const matchingProducts = activeProducts.filter((product) => !query || product.name.toLocaleLowerCase().includes(query) || product.sku.toLocaleLowerCase().includes(query))
+  const matchingProducts = activeProducts.filter((product) => !query || product.name.toLocaleLowerCase().includes(query) || Boolean(product.sku?.toLocaleLowerCase().includes(query)))
   const selectedProduct = activeProducts.find((product) => product.id === selectedProductId)
   const total = calculateSaleTotal(cart)
   const lineCount = cart.length

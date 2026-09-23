@@ -7,6 +7,7 @@ import { FormField } from "@/components/ui/form-field"
 import { useBusiness } from "@/features/business/business-context"
 import { getModuleLabel, optionalModules, type OptionalModule } from "@/features/business/modules"
 import { BusinessIcon, businessIconOptions, type BusinessIconId } from "@/features/business/business-icons"
+import { currencyOptions, defaultBusinessCurrency, type BusinessCurrency } from "@/features/business/currency"
 
 const steps = ["Welcome", "Business", "Modules", "Review"]
 const businessTypes = ["Retail", "Electronics", "Fashion", "Cosmetics", "Grocery / Mini-mart", "Pharmacy", "Other"]
@@ -19,6 +20,7 @@ export function OnboardingPage() {
   const [businessTypeChoice, setBusinessTypeChoice] = useState("")
   const [customBusinessType, setCustomBusinessType] = useState("")
   const [businessIconId, setBusinessIconId] = useState<BusinessIconId>("store")
+  const [currency, setCurrency] = useState<BusinessCurrency>(defaultBusinessCurrency)
   const [selectedModules, setSelectedModules] = useState<OptionalModule[]>([])
   const [errors, setErrors] = useState<{ name?: string; type?: string }>({})
   const [formError, setFormError] = useState("")
@@ -58,6 +60,7 @@ export function OnboardingPage() {
         businessType,
         enabledModules: selectedModules,
         iconId: businessIconId,
+        currency,
       })
       navigate("/dashboard", { replace: true })
     } catch (error) {
@@ -108,6 +111,7 @@ export function OnboardingPage() {
                 {errors.type && businessTypeChoice !== "Other" && <p className="text-sm text-destructive" id="business-type-error">{errors.type}</p>}
               </div>
               <fieldset className="space-y-2"><legend className="text-sm font-medium">Business icon</legend><p className="text-sm text-muted-foreground">Choose a built-in identity for your workspace.</p><div aria-label="Business icon choices" className="flex flex-wrap gap-2" role="group">{businessIconOptions.map((option) => <button aria-label={option.label} aria-pressed={businessIconId === option.id} className={`flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${businessIconId === option.id ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-muted"}`} key={option.id} onClick={() => setBusinessIconId(option.id)} type="button"><BusinessIcon className="size-4" id={option.id} />{option.label}</button>)}</div></fieldset>
+              <div className="space-y-2"><label className="block text-sm font-medium" htmlFor="business-currency">Business currency</label><select className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm" id="business-currency" onChange={(event) => setCurrency(event.target.value as BusinessCurrency)} value={currency}>{currencyOptions.map((option) => <option key={option.code} value={option.code}>{option.code} — {option.name} ({option.symbol})</option>)}</select><p className="text-xs text-muted-foreground">This labels monetary values for this workspace; it does not convert existing amounts.</p></div>
             </div>
             <div className="mt-8 flex justify-between"><Button onClick={() => setStep(0)} type="button" variant="outline"><ChevronLeft className="mr-2 size-4" />Back</Button><Button type="submit">Continue<ChevronRight className="ml-2 size-4" /></Button></div>
           </form>

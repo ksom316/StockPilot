@@ -27,20 +27,25 @@ function ModuleUpdateProbe() {
 
 function OnboardingProbe() {
   const { business, completeOnboarding } = useBusiness()
-  return <div><output>{business?.name ?? "no business"}</output><button onClick={() => void completeOnboarding({ name: "Northstar", businessType: "Retail", enabledModules: [], iconId: "store" }).catch((error: Error) => { document.title = error.message })} type="button">Complete onboarding</button></div>
+  return <div><output>{business?.name ?? "no business"}</output><button onClick={() => void completeOnboarding({ name: "Northstar", businessType: "Retail", enabledModules: [], iconId: "store", currency: "USD" }).catch((error: Error) => { document.title = error.message })} type="button">Complete onboarding</button></div>
+}
+
+function WorkspaceProbe() {
+  const { business, businesses, switchBusiness } = useBusiness()
+  return <div><output>{business?.name ?? "none"}:{business?.id ?? "none"}</output><span>{businesses.map((item) => `${item.name}:${item.role}`).join(",")}</span><button onClick={() => void switchBusiness("business-b")} type="button">Switch workspace</button></div>
 }
 
 function makeBuilder(response: Promise<unknown> | unknown) {
   const builder = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
-    limit: vi.fn(() => Promise.resolve(response)),
+    then: (resolve: (value: unknown) => unknown) => Promise.resolve(response).then(resolve),
   }
   return builder
 }
 
 describe("BusinessProvider identity boundaries", () => {
-  beforeEach(() => { supabaseMocks.from.mockReset(); supabaseMocks.rpc.mockReset(); document.title = "" })
+  beforeEach(() => { supabaseMocks.from.mockReset(); supabaseMocks.rpc.mockReset(); supabaseMocks.rpc.mockResolvedValue({ data: false, error: null }); document.title = ""; window.localStorage.clear() })
 
   it("hides the previous workspace immediately when the authenticated user changes", async () => {
     let releaseUserB: ((value: unknown) => void) | undefined
@@ -114,14 +119,14 @@ describe("BusinessProvider identity boundaries", () => {
       }
       return { select: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: [{ module: "sales" }], error: null })) })) })) }
     })
-    supabaseMocks.rpc.mockResolvedValue({ data: null, error: { code: "23505", message: "An active business membership already exists" } })
+    supabaseMocks.rpc.mockImplementation((name: string) => name === "create_business_onboarding" ? Promise.resolve({ data: null, error: { code: "23505", message: "An active business membership already exists" } }) : Promise.resolve({ data: false, error: null }))
 
     render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><OnboardingProbe /></BusinessProvider></AuthContext.Provider>)
     expect(await screen.findByText("no business")).toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: /complete onboarding/i }))
     expect(await screen.findByText("Northstar")).toBeInTheDocument()
     expect(document.title).toBe("")
-    expect(supabaseMocks.rpc).toHaveBeenCalledTimes(1)
+    expect(supabaseMocks.rpc).toHaveBeenCalledTimes(2)
   })
 
   it("keeps a non-matching onboarding conflict as a safe error", async () => {
@@ -135,5 +140,23 @@ describe("BusinessProvider identity boundaries", () => {
     await userEvent.click(screen.getByRole("button", { name: /complete onboarding/i }))
     await vi.waitFor(() => expect(document.title).toBe("We couldn't finish your business setup. Please try again."))
     expect(supabaseMocks.from).toHaveBeenCalledTimes(1)
+  })
+
+  it("resolves multiple memberships, discards a stale preference, and switches roles", async () => {
+    window.localStorage.setItem("stockpilot.active-business", "revoked-business")
+    const memberships = [
+      { id: "membership-a", business_id: "business-a", role: "owner", status: "active", businesses: { id: "business-a", name: "Primary", business_type: "Retail", currency: "USD" } },
+      { id: "membership-b", business_id: "business-b", role: "employee", status: "active", businesses: { id: "business-b", name: "Partner", business_type: "Wholesale", currency: "USD" } },
+    ]
+    supabaseMocks.from.mockImplementation((table: string) => table === "business_members"
+      ? makeBuilder({ data: memberships, error: null })
+      : { select: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: [{ module: "sales" }], error: null })) })) })) })
+
+    render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><WorkspaceProbe /></BusinessProvider></AuthContext.Provider>)
+    expect(await screen.findByText("Primary:business-a")).toBeInTheDocument()
+    expect(screen.getByText("Primary:owner,Partner:employee")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: /switch workspace/i }))
+    expect(await screen.findByText("Partner:business-b")).toBeInTheDocument()
+    expect(window.localStorage.getItem("stockpilot.active-business")).toBe("business-b")
   })
 })

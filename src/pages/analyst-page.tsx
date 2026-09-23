@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/page-header"
 import { useBusiness } from "@/features/business/business-context"
@@ -27,6 +27,14 @@ export function AnalystPage() {
   const [isPending, setIsPending] = useState(false)
   const suggestions = useMemo(() => starterQuestions(enabledModules), [enabledModules])
   const customRange = period === "CUSTOM" && business ? getAnalyticsDateRange("custom", business.timezone, new Date(), customStart, customEnd) : null
+
+  useEffect(() => {
+    // A workspace switch must never retain generated content from the previous business.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setResult(null)
+    setError(null)
+    setIsPending(false)
+  }, [business?.id])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()

@@ -14,7 +14,7 @@ import { DashboardPage } from "@/pages/dashboard-page"
 import { ModuleSettingsPage } from "@/pages/module-settings-page"
 import { createAuthValue, createBusinessValue, testBusiness, testMembership, testSession, testUser, TestAuthProvider } from "@/test/auth-test-utils"
 
-function SettingsFixture({ role = "owner", initial: initialModules = [], update = vi.fn().mockResolvedValue(undefined) }: { role?: "owner" | "manager" | "employee" | "cashier"; initial?: (typeof optionalModules)[number]["key"][]; update?: (module: (typeof optionalModules)[number]["key"], enabled: boolean) => Promise<void> }) {
+function SettingsFixture({ role = "owner", initial: initialModules = [], financialActivity = false, update = vi.fn().mockResolvedValue(undefined) }: { role?: "owner" | "manager" | "employee" | "cashier"; initial?: (typeof optionalModules)[number]["key"][]; financialActivity?: boolean; update?: (module: (typeof optionalModules)[number]["key"], enabled: boolean) => Promise<void> }) {
   const [enabledModules, setEnabledModules] = useState(initialModules)
   const value = createBusinessValue({
     business: testBusiness,
@@ -22,12 +22,13 @@ function SettingsFixture({ role = "owner", initial: initialModules = [], update 
     role,
     enabledModules,
     onboardingRequired: false,
+    hasFinancialActivity: financialActivity,
     setModuleEnabled: async (module, enabled) => {
       await update(module, enabled)
       setEnabledModules((current) => enabled ? [...new Set([...current, module])] : current.filter((item) => item !== module))
     },
   })
-  return <BusinessContext.Provider value={value}><ModuleSettingsPage /></BusinessContext.Provider>
+  return <MemoryRouter><BusinessContext.Provider value={value}><ModuleSettingsPage /></BusinessContext.Provider></MemoryRouter>
 }
 
 function renderSettings(props: Parameters<typeof SettingsFixture>[0] = {}) {
@@ -38,7 +39,7 @@ describe("ModuleSettingsPage", () => {
   it("lets the owner choose a curated business icon", async () => {
     const user = userEvent.setup()
     const setBusinessIcon = vi.fn().mockResolvedValue(undefined)
-    render(<TestAuthProvider value={createAuthValue({ user: testUser, session: testSession })}><BusinessContext.Provider value={createBusinessValue({ business: testBusiness, membership: testMembership, role: "owner", onboardingRequired: false, setBusinessIcon })}><ModuleSettingsPage /></BusinessContext.Provider></TestAuthProvider>)
+    render(<MemoryRouter><TestAuthProvider value={createAuthValue({ user: testUser, session: testSession })}><BusinessContext.Provider value={createBusinessValue({ business: testBusiness, membership: testMembership, role: "owner", onboardingRequired: false, setBusinessIcon })}><ModuleSettingsPage /></BusinessContext.Provider></TestAuthProvider></MemoryRouter>)
     await user.click(screen.getByRole("button", { name: "Warehouse" }))
     expect(setBusinessIcon).toHaveBeenCalledWith("warehouse")
   })
@@ -72,6 +73,15 @@ describe("ModuleSettingsPage", () => {
     await user.click(screen.getByRole("switch", { name: "Sales module" }))
     expect(update).toHaveBeenLastCalledWith("sales", false)
     expect(screen.getByRole("switch", { name: "Sales module" })).toHaveAttribute("aria-checked", "false")
+  })
+
+  it("keeps currency editable before activity and locked after activity", () => {
+    const { unmount } = renderSettings()
+    expect(screen.getByLabelText("Business currency")).not.toBeDisabled()
+    unmount()
+    renderSettings({ financialActivity: true })
+    expect(screen.getByLabelText("Business currency")).toBeDisabled()
+    expect(screen.getByText("Currency cannot be changed after financial activity has been recorded.")).toBeInTheDocument()
   })
 
   it.each(["manager", "employee", "cashier"] as const)("keeps %s module settings read-only", (role) => {

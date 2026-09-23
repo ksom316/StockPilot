@@ -42,7 +42,7 @@ export const testBusiness = {
   id: "business-1",
   name: "Northstar Market",
   businessType: "Retail",
-  currency: "USD",
+  currency: "USD" as const,
   timezone: "UTC",
   iconId: "store" as const,
 }
@@ -56,17 +56,22 @@ export const testMembership = {
 
 export function createBusinessValue(overrides: Partial<BusinessContextValue> = {}): BusinessContextValue {
   return {
+    businesses: [],
     business: null,
     membership: null,
     role: null,
     enabledModules: [],
+    hasFinancialActivity: false,
     isLoading: false,
     onboardingRequired: true,
     error: null,
     refresh: vi.fn(),
+    switchBusiness: vi.fn(),
     completeOnboarding: vi.fn(),
+    createBusiness: vi.fn(),
     setModuleEnabled: vi.fn(),
     setBusinessIcon: vi.fn(),
+    setBusinessCurrency: vi.fn(),
     ...overrides,
   }
 }

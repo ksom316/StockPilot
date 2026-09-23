@@ -17,14 +17,7 @@ export function formatExpenseAmount(scaled: bigint) {
 }
 
 export function formatExpenseMoney(value: string, currency: string) {
-  const [whole = "0", fraction = ""] = value.split(".")
-  const safeFraction = fraction.slice(0, 4).replace(/0+$/, "").padEnd(2, "0")
-  const parts = new Intl.NumberFormat(undefined, { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).formatToParts(BigInt(whole))
-  let lastNumberPart = -1
-  parts.forEach((part, index) => { if (part.type === "integer" || part.type === "group") lastNumberPart = index })
-  const decimal = new Intl.NumberFormat(undefined, { minimumFractionDigits: 1 }).formatToParts(1.1).find((part) => part.type === "decimal")?.value ?? "."
-  parts.splice(lastNumberPart + 1, 0, { type: "decimal", value: decimal }, { type: "fraction", value: safeFraction })
-  return parts.map((part) => part.value).join("")
+  return formatBusinessMoney(value, currency)
 }
 
 export function isValidIsoDate(value: string) {
@@ -32,3 +25,4 @@ export function isValidIsoDate(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`)
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value
 }
+import { formatBusinessMoney } from "@/features/business/currency"

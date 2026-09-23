@@ -15,6 +15,7 @@ import { SalesCheckoutPage } from "@/pages/sales-checkout-page"
 import { SalesHistoryPage } from "@/pages/sales-history-page"
 import { SaleDetailPage } from "@/pages/sale-detail-page"
 import { FinanceOverviewPage } from "@/pages/finance-overview-page"
+import { CreateBusinessPage } from "@/pages/create-business-page"
 
 export const routes = [
   {
@@ -38,6 +39,7 @@ export const routes = [
           {
             element: <RequireBusiness />,
             children: [
+              { path: "/businesses/new", element: <CreateBusinessPage /> },
               { path: "/dashboard", element: <DashboardPage /> },
               { path: "/inventory", element: <InventoryPage /> },
               { path: "/inventory/movements", element: <InventoryMovementsPage /> },

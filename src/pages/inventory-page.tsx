@@ -40,7 +40,7 @@ export function InventoryPage() {
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
     return (products.data ?? []).filter((product) => {
-      const matchesSearch = !query || product.name.toLocaleLowerCase().includes(query) || product.sku.toLocaleLowerCase().includes(query)
+      const matchesSearch = !query || product.name.toLocaleLowerCase().includes(query) || Boolean(product.sku?.toLocaleLowerCase().includes(query))
       const matchesCategory = categoryFilter === "all" || (categoryFilter === "uncategorized" ? !product.categoryId : product.categoryId === categoryFilter)
       const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? product.isActive : !product.isActive)
       const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
@@ -141,8 +141,8 @@ export function InventoryPage() {
         </>
       )}
 
-      {(showProductForm || editingProduct) && business && <ProductFormDialog categories={categories.data ?? []} currency={business.currency} onClose={() => { setShowProductForm(false); setEditingProduct(null) }} onSubmit={saveProduct} product={editingProduct ?? undefined} />}
-      {showCategories && <CategoryManagerDialog categories={categories.data ?? []} onClose={() => setShowCategories(false)} onCreate={(input) => mutations.createCategory.mutateAsync(input)} onUpdate={(id, input) => mutations.updateCategory.mutateAsync({ id, input })} />}
+      {(showProductForm || editingProduct) && business && <ProductFormDialog categories={categories.data ?? []} currency={business.currency} onClose={() => { setShowProductForm(false); setEditingProduct(null) }} onCreateCategory={async (input) => mutations.createCategory.mutateAsync(input)} onSubmit={saveProduct} product={editingProduct ?? undefined} />}
+      {showCategories && <CategoryManagerDialog categories={categories.data ?? []} onClose={() => setShowCategories(false)} onCreate={async (input) => { await mutations.createCategory.mutateAsync(input) }} onUpdate={(id, input) => mutations.updateCategory.mutateAsync({ id, input })} />}
       {stockProduct && <StockOperationDialog onClose={() => setStockProduct(null)} onSubmit={recordMovement} product={stockProduct} />}
     </section>
   )
@@ -151,7 +151,7 @@ export function InventoryPage() {
 function ProductRow({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
   return <TableRow className={!product.isActive ? "opacity-60" : "hover:bg-muted/30"}>
-    <Td><p className="font-medium">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku}{!product.isActive && " · Inactive"}</p></Td>
+    <Td><p className="font-medium">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">{product.sku ? `SKU ${product.sku}` : "No SKU"}{!product.isActive && " · Inactive"}</p></Td>
     <Td className="text-muted-foreground">{product.categoryName ?? "Uncategorized"}</Td>
     <Td align="right">{formatMoney(product.sellingPrice, currency)}</Td>
     <Td align="right" className="font-medium">{formatQuantity(product.currentQuantity)}</Td>
@@ -162,5 +162,5 @@ function ProductRow({ product, currency, canManage, onEdit, onStock }: { product
 
 function ProductCard({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
-  return <article className={`rounded-lg border border-border bg-card p-4 ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">SKU {product.sku} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)}</p></div></div><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild className="w-full" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History className="mr-2 size-4" />History</Link></Button>{canManage && <Button className="w-full" onClick={onStock} variant="outline"><ArrowUpDown className="mr-2 size-4" />Manage stock</Button>}</div></article>
+  return <article className={`rounded-lg border border-border bg-card p-4 ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">{product.sku ? `SKU ${product.sku}` : "No SKU"} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)}</p></div></div><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild className="w-full" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History className="mr-2 size-4" />History</Link></Button>{canManage && <Button className="w-full" onClick={onStock} variant="outline"><ArrowUpDown className="mr-2 size-4" />Manage stock</Button>}</div></article>
 }

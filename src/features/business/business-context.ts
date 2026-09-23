@@ -2,12 +2,13 @@ import { createContext, useContext } from "react"
 
 import type { OptionalModule } from "@/features/business/modules"
 import type { BusinessIconId } from "@/features/business/business-icons"
+import type { BusinessCurrency } from "@/features/business/currency"
 
 export interface Business {
   id: string
   name: string
   businessType: string | null
-  currency: string
+  currency: BusinessCurrency
   timezone: string
   iconId: BusinessIconId
 }
@@ -19,25 +20,38 @@ export interface Membership {
   status: "active"
 }
 
+export interface AccessibleBusiness extends Business {
+  membershipId: string
+  role: Membership["role"]
+}
+
 export interface CompleteOnboardingInput {
   name: string
   businessType: string | null
   enabledModules: OptionalModule[]
   iconId: BusinessIconId
+  currency: BusinessCurrency
 }
 
+export type CreateBusinessInput = CompleteOnboardingInput
+
 export interface BusinessContextValue {
+  businesses: AccessibleBusiness[]
   business: Business | null
   membership: Membership | null
   role: Membership["role"] | null
   enabledModules: OptionalModule[]
+  hasFinancialActivity: boolean
   isLoading: boolean
   onboardingRequired: boolean
   error: string | null
   refresh: () => Promise<void>
+  switchBusiness: (businessId: string) => Promise<void>
   completeOnboarding: (input: CompleteOnboardingInput) => Promise<void>
+  createBusiness: (input: CreateBusinessInput) => Promise<void>
   setModuleEnabled: (module: OptionalModule, enabled: boolean) => Promise<void>
   setBusinessIcon: (iconId: BusinessIconId) => Promise<void>
+  setBusinessCurrency: (currency: BusinessCurrency) => Promise<void>
 }
 
 export const BusinessContext = createContext<BusinessContextValue | undefined>(undefined)

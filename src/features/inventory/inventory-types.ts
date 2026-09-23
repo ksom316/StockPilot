@@ -10,7 +10,7 @@ export interface Product {
   categoryId: string | null
   categoryName: string | null
   name: string
-  sku: string
+  sku: string | null
   description: string | null
   costPrice: string
   sellingPrice: string
@@ -21,7 +21,7 @@ export interface Product {
 
 export interface ProductInput {
   name: string
-  sku: string
+  sku: string | null
   categoryId: string | null
   description: string | null
   costPrice: string

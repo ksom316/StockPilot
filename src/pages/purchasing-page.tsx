@@ -17,7 +17,7 @@ import type { RecordedPurchase } from "@/features/purchasing/purchasing-types"
 interface ReceiptLine {
   productId: string
   name: string
-  sku: string
+  sku: string | null
   quantity: string
   unitCost: string
 }
@@ -56,7 +56,7 @@ export function PurchasingPage() {
 
   const activeProducts = useMemo(() => (products.data ?? []).filter((product) => product.isActive), [products.data])
   const productTerm = productSearch.trim().toLocaleLowerCase()
-  const matchingProducts = activeProducts.filter((product) => !productTerm || product.name.toLocaleLowerCase().includes(productTerm) || product.sku.toLocaleLowerCase().includes(productTerm))
+  const matchingProducts = activeProducts.filter((product) => !productTerm || product.name.toLocaleLowerCase().includes(productTerm) || Boolean(product.sku?.toLocaleLowerCase().includes(productTerm)))
   const activeSuppliers = suppliers.data ?? []
   const supplierTerm = supplierSearch.trim().toLocaleLowerCase()
   const matchingSuppliers = activeSuppliers.filter((supplier) => !supplierTerm || supplier.name.toLocaleLowerCase().includes(supplierTerm))

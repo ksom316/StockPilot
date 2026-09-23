@@ -53,7 +53,7 @@ describe("OnboardingPage", () => {
     await user.click(screen.getByRole("button", { name: /review setup/i }))
     expect(screen.getByText(/starting with inventory only/i)).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: /finish setup/i }))
-    expect(completeOnboarding).toHaveBeenCalledWith({ name: "Northstar Market", businessType: "Retail", enabledModules: [], iconId: "store" })
+    expect(completeOnboarding).toHaveBeenCalledWith({ name: "Northstar Market", businessType: "Retail", enabledModules: [], iconId: "store", currency: "USD" })
   })
 
   it("submits the selected optional modules", async () => {
@@ -66,7 +66,7 @@ describe("OnboardingPage", () => {
     expect(screen.getByRole("checkbox", { name: /sales/i })).toHaveAttribute("aria-checked", "true")
     await user.click(screen.getByRole("button", { name: /review setup/i }))
     await user.click(screen.getByRole("button", { name: /finish setup/i }))
-    expect(completeOnboarding).toHaveBeenCalledWith({ name: "Northstar Market", businessType: "Retail", enabledModules: ["sales", "analytics"], iconId: "store" })
+    expect(completeOnboarding).toHaveBeenCalledWith({ name: "Northstar Market", businessType: "Retail", enabledModules: ["sales", "analytics"], iconId: "store", currency: "USD" })
   })
 
   it("lets the owner choose a curated business icon and shows it in review", async () => {

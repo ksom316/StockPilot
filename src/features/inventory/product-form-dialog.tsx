@@ -5,7 +5,7 @@ import { DialogShell } from "@/components/ui/dialog-shell"
 import { FormField } from "@/components/ui/form-field"
 import { formatQuantity } from "@/features/inventory/inventory-format"
 import { InventoryDataError } from "@/features/inventory/inventory-service"
-import type { Category, Product, ProductInput } from "@/features/inventory/inventory-types"
+import type { Category, CategoryInput, Product, ProductInput } from "@/features/inventory/inventory-types"
 
 interface ProductFormDialogProps {
   product?: Product
@@ -13,6 +13,7 @@ interface ProductFormDialogProps {
   currency: string
   onClose: () => void
   onSubmit: (input: ProductInput) => Promise<void>
+  onCreateCategory?: (input: CategoryInput) => Promise<Category>
 }
 
 interface Errors {
@@ -26,7 +27,8 @@ interface Errors {
 const moneyPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,4})?$/
 const quantityPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,3})?$/
 
-export function ProductFormDialog({ product, categories, currency, onClose, onSubmit }: ProductFormDialogProps) {
+export function ProductFormDialog({ product, categories: initialCategories, currency, onClose, onSubmit, onCreateCategory }: ProductFormDialogProps) {
+  const [categories, setCategories] = useState(initialCategories)
   const [name, setName] = useState(product?.name ?? "")
   const [sku, setSku] = useState(product?.sku ?? "")
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? "")
@@ -38,13 +40,16 @@ export function ProductFormDialog({ product, categories, currency, onClose, onSu
   const [errors, setErrors] = useState<Errors>({})
   const [formError, setFormError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+  const [isSavingCategory, setIsSavingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [categoryError, setCategoryError] = useState("")
 
   const validate = () => {
     const next: Errors = {}
     if (!name.trim()) next.name = "Enter a product name."
     else if (name.trim().length > 200) next.name = "Product name must be 200 characters or fewer."
-    if (!sku.trim()) next.sku = "Enter a SKU."
-    else if (sku.trim().length > 100) next.sku = "SKU must be 100 characters or fewer."
+    if (sku.trim().length > 100) next.sku = "SKU must be 100 characters or fewer."
     if (!moneyPattern.test(costPrice.trim())) next.costPrice = `Enter a valid ${currency} amount with up to 4 decimal places.`
     if (!moneyPattern.test(sellingPrice.trim())) next.sellingPrice = `Enter a valid ${currency} amount with up to 4 decimal places.`
     if (!quantityPattern.test(lowStockThreshold.trim())) next.lowStockThreshold = "Enter a non-negative quantity with up to 3 decimal places."
@@ -61,7 +66,7 @@ export function ProductFormDialog({ product, categories, currency, onClose, onSu
     try {
       await onSubmit({
         name: name.trim(),
-        sku: sku.trim(),
+        sku: sku.trim() || null,
         categoryId: categoryId || null,
         description: description.trim() || null,
         costPrice: costPrice.trim(),
@@ -80,13 +85,26 @@ export function ProductFormDialog({ product, categories, currency, onClose, onSu
     }
   }
 
+  const createInlineCategory = async () => {
+    const trimmed = newCategoryName.trim()
+    if (!trimmed) { setCategoryError("Enter a category name."); return }
+    if (!onCreateCategory) return
+    setIsSavingCategory(true); setCategoryError("")
+    try {
+      const category = await onCreateCategory({ name: trimmed })
+      setCategories((current) => [...current, category].sort((left, right) => left.name.localeCompare(right.name)))
+      setCategoryId(category.id); setNewCategoryName("")
+    } catch (error) { setCategoryError(error instanceof Error ? error.message : "We couldn't create this category.") }
+    finally { setIsSavingCategory(false) }
+  }
+
   return (
     <DialogShell description={product ? "Update catalog details without changing stock." : "Create a zero-stock catalog product. Stock can be added later."} onClose={onClose} title={product ? "Edit product" : "Add product"} wide>
       <form className="space-y-5" noValidate onSubmit={handleSubmit}>
         {formError && <p className="rounded-md border border-destructive/25 bg-destructive/8 p-3 text-sm text-destructive" role="alert">{formError}</p>}
         <div className="grid gap-5 sm:grid-cols-2">
           <FormField autoFocus disabled={isSubmitting} error={errors.name} id="product-name" label="Product name" maxLength={200} onChange={(event) => setName(event.target.value)} value={name} />
-          <FormField disabled={isSubmitting} error={errors.sku} id="product-sku" label="SKU" maxLength={100} onChange={(event) => setSku(event.target.value)} value={sku} />
+          <div><FormField disabled={isSubmitting} error={errors.sku} id="product-sku" label="SKU (optional)" maxLength={100} onChange={(event) => setSku(event.target.value)} value={sku} /><p className="mt-1 text-xs text-muted-foreground">Stock Keeping Unit — your own code for identifying this product. Example: IPH15-BLK-128</p></div>
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-medium" htmlFor="product-category">Category <span className="font-normal text-muted-foreground">(optional)</span></label>
@@ -94,6 +112,7 @@ export function ProductFormDialog({ product, categories, currency, onClose, onSu
             <option value="">Uncategorized</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
+          {onCreateCategory && <div className="mt-2 rounded-md border border-dashed border-border p-3 text-sm"><p className="text-muted-foreground">{categories.length === 0 ? "No categories yet. Create categories to organize your products." : "Need another category?"}</p>{!isCreatingCategory && <button className="mt-1 font-medium text-primary underline-offset-2 hover:underline" disabled={isSubmitting} onClick={() => setIsCreatingCategory(true)} type="button">Create category</button>}{isCreatingCategory && <div className="mt-2 flex flex-col gap-2 sm:flex-row"><input aria-label="New category name" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm" disabled={isSavingCategory} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Category name" value={newCategoryName} /><Button disabled={isSavingCategory} onClick={() => void createInlineCategory()} size="sm" type="button">Create</Button></div>}{categoryError && <p className="mt-1 text-sm text-destructive" role="alert">{categoryError}</p>}</div>}
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <FormField disabled={isSubmitting} error={errors.costPrice} id="cost-price" inputMode="decimal" label={`Cost price (${currency})`} onChange={(event) => setCostPrice(event.target.value)} value={costPrice} />

@@ -59,7 +59,7 @@ export async function fetchInventoryMovements(businessId: string): Promise<Inven
 
   if (error) throw new InventoryDataError("We couldn't load movement history.", error.code)
   return (data ?? []).map((row) => {
-    const product = row.products as unknown as { name: string; sku: string } | null
+    const product = row.products as unknown as { name: string; sku: string | null } | null
     return {
       id: row.id,
       businessId: row.business_id,
@@ -110,14 +110,15 @@ export async function updateProduct(productId: string, input: ProductInput): Pro
   if (error) throw new InventoryDataError("We couldn't update this product.", error.code)
 }
 
-export async function createCategory(businessId: string, input: CategoryInput): Promise<void> {
-  const { error } = await requireClient().from("categories").insert({
+export async function createCategory(businessId: string, input: CategoryInput): Promise<Category> {
+  const { data, error } = await requireClient().from("categories").insert({
     business_id: businessId,
     name: input.name,
     description: null,
-  })
+  }).select("id, name, description").single()
 
   if (error) throw new InventoryDataError("We couldn't create this category.", error.code)
+  return data
 }
 
 export async function updateCategory(categoryId: string, input: CategoryInput): Promise<void> {

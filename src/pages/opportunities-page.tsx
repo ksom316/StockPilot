@@ -1,5 +1,5 @@
 import { AlertTriangle, Lightbulb, Sparkles } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,11 @@ import { useOpportunitySnapshot } from "@/features/opportunities/opportunity-que
 const typeLabels: Record<OpportunitySignalType, string> = { RESTOCK_DEMAND: "Restock Demand", SALES_MOMENTUM: "Sales Momentum", SLOW_MOVING_STOCK: "Slow-Moving Stock", MARGIN_ATTENTION: "Margin Attention", REPEATED_PURCHASE_DEMAND: "Repeated Purchase Demand" }
 export function OpportunitiesPage() {
   const { business, enabledModules, role } = useBusiness(); const query = useOpportunitySnapshot(); const [advisor, setAdvisor] = useState<AdvisorResponse | null>(null); const [advisorError, setAdvisorError] = useState<string | null>(null); const [isPending, setIsPending] = useState(false); const [focus, setFocus] = useState("")
+  useEffect(() => {
+    // A workspace switch must never retain generated guidance from the previous business.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAdvisor(null); setAdvisorError(null); setFocus(""); setIsPending(false)
+  }, [business?.id])
   const requestAdvice = async (signalId?: string) => {
     if (!business || isPending) return
     setIsPending(true); setAdvisorError(null); setFocus(signalId ?? "")

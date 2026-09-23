@@ -11,6 +11,7 @@ import { useAuth } from "@/features/auth/auth-context"
 import { useBusiness } from "@/features/business/business-context"
 import { useNotificationSummary } from "@/features/notifications/notification-queries"
 import { BusinessIcon } from "@/features/business/business-icons"
+import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher"
 import { useProfileIdentity } from "@/features/profile/profile-identity"
 
 export function AppShell() {
@@ -91,17 +92,18 @@ export function AppShell() {
         className={`hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out lg:flex ${collapsed ? "w-[76px]" : "w-64"}`}
       >
         <div className={`flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4 ${collapsed ? "justify-center px-0" : ""}`}>
-          <Link className="flex min-w-0 items-center gap-2.5 outline-none" to="/dashboard">
+          <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
               <Boxes aria-hidden="true" className="size-4" />
             </span>
             {!collapsed && (
               <span className="min-w-0">
                 <span className="block text-sm font-semibold leading-tight tracking-tight text-sidebar-accent-foreground">StockPilot</span>
-              <span className="flex min-w-0 items-center gap-1.5 text-xs leading-tight text-sidebar-muted-foreground"><BusinessIcon className="size-3.5 shrink-0" id={business.iconId} /><span className="truncate" title={business.name}>{business.name}</span></span>
+                <WorkspaceSwitcher />
               </span>
             )}
-          </Link>
+            {collapsed && <WorkspaceSwitcher collapsed />}
+          </div>
         </div>
         <NavList collapsed={collapsed} groups={navGroups} />
         <div className="border-t border-sidebar-border p-2">
@@ -130,7 +132,7 @@ export function AppShell() {
             >
               <Menu aria-hidden="true" className="size-5" />
             </Button>
-            <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium text-foreground lg:hidden"><BusinessIcon className="size-4 shrink-0" id={business.iconId} /><span className="truncate" title={business.name}>{business.name}</span></span>
+            <span className="min-w-0 lg:hidden"><WorkspaceSwitcher /></span>
             <span className="hidden min-w-0 items-center gap-1.5 text-sm text-muted-foreground lg:flex"><BusinessIcon className="size-4" id={business.iconId} />Workspace: <span className="font-medium text-foreground">{business.name}</span></span>
           </div>
           <div className="flex shrink-0 items-center gap-1">

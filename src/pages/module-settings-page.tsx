@@ -1,16 +1,20 @@
 import { Check, PackageCheck } from "lucide-react"
 import { useState } from "react"
+import { Link } from "react-router-dom"
 
 import { useBusiness } from "@/features/business/business-context"
 import { optionalModules } from "@/features/business/modules"
 import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { BusinessIcon, businessIconOptions, type BusinessIconId } from "@/features/business/business-icons"
+import { currencyOptions, type BusinessCurrency } from "@/features/business/currency"
 
 export function ModuleSettingsPage() {
-  const { business, enabledModules, isLoading, error, role, setModuleEnabled, setBusinessIcon } = useBusiness()
+  const { business, businesses, enabledModules, hasFinancialActivity, isLoading, error, role, setModuleEnabled, setBusinessIcon, setBusinessCurrency, switchBusiness } = useBusiness()
   const [pendingModule, setPendingModule] = useState<string | null>(null)
   const [updateError, setUpdateError] = useState("")
+  const [isCurrencySaving, setIsCurrencySaving] = useState(false)
   const canManage = role === "owner"
 
   const toggleModule = async (module: (typeof optionalModules)[number]["key"], enabled: boolean) => {
@@ -39,6 +43,12 @@ export function ModuleSettingsPage() {
     }
   }
 
+  const chooseCurrency = async (currency: BusinessCurrency) => {
+    if (!canManage || currency === business?.currency || isCurrencySaving) return
+    setIsCurrencySaving(true); setUpdateError("")
+    try { await setBusinessCurrency(currency) } catch (cause) { setUpdateError(cause instanceof Error ? cause.message : "We couldn't update the business currency. Please try again.") } finally { setIsCurrencySaving(false) }
+  }
+
   if (isLoading) return <p className="flex min-h-56 items-center justify-center text-sm text-muted-foreground" role="status">Loading module settings…</p>
   if (error) return <div className="rounded-xl border border-destructive/25 bg-card p-6 text-center" role="alert"><h1 className="text-xl font-semibold">Module settings unavailable</h1><p className="mt-2 text-muted-foreground">{error}</p></div>
   if (!business) return <div className="rounded-xl border border-border bg-card p-6 text-center"><h1 className="text-xl font-semibold">Workspace unavailable</h1><p className="mt-2 text-muted-foreground">Sign in to a business workspace to view its modules.</p></div>
@@ -46,6 +56,12 @@ export function ModuleSettingsPage() {
   return (
     <section className="mx-auto max-w-4xl space-y-6">
       <PageHeader description={`Choose which optional tools are enabled for ${business.name}. Turning a module off hides it from navigation; it does not delete business data.`} eyebrow="Workspace settings" title="Modules" />
+
+      <section aria-labelledby="workspace-management-title" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div><h2 className="text-lg font-semibold" id="workspace-management-title">Businesses &amp; workspaces</h2><p className="mt-1 text-sm text-muted-foreground">Switch between the active businesses you can access or create another one.</p></div>
+        <div className="mt-4 space-y-2">{businesses.map((item) => <button className={`flex w-full items-center justify-between rounded-md border p-3 text-left text-sm ${item.id === business.id ? "border-primary/40 bg-primary/5" : "border-border hover:bg-muted"}`} key={item.id} onClick={() => { if (item.id !== business.id) void switchBusiness(item.id) }} type="button"><span><span className="block font-medium">{item.name}</span><span className="text-xs capitalize text-muted-foreground">{item.role}{item.id === business.id ? " · Active" : ""}</span></span><BusinessIcon className="size-4 text-primary" id={item.iconId} /></button>)}</div>
+        {role === "owner" && <Button asChild className="mt-4" size="sm" variant="outline"><Link to="/businesses/new">Create business</Link></Button>}
+      </section>
 
       <section aria-labelledby="business-identity-title" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div><h2 className="text-lg font-semibold" id="business-identity-title">Business identity</h2><p className="mt-1 text-sm text-muted-foreground">Choose a built-in icon for this business workspace.</p></div>
@@ -57,6 +73,7 @@ export function ModuleSettingsPage() {
           ))}
         </div>
         {!canManage && <p className="mt-4 text-sm text-muted-foreground">Only the business owner can change the business icon.</p>}
+        <div className="mt-5 border-t border-border pt-5"><label className="block text-sm font-medium" htmlFor="business-currency">Business currency</label><select className="mt-2 h-11 w-full rounded-md border border-border bg-background px-3 text-sm sm:max-w-md" disabled={!canManage || isCurrencySaving || hasFinancialActivity} id="business-currency" onChange={(event) => void chooseCurrency(event.target.value as BusinessCurrency)} value={business.currency}>{currencyOptions.map((option) => <option key={option.code} value={option.code}>{option.code} — {option.name} ({option.symbol})</option>)}</select><p className="mt-2 text-xs text-muted-foreground">{hasFinancialActivity ? "Currency cannot be changed after financial activity has been recorded." : "Choose carefully: changing this updates labels and formatting only; it does not convert existing monetary amounts."}</p></div>
       </section>
 
       <section aria-labelledby="core-modules-title" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">

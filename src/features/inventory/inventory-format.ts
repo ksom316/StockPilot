@@ -29,19 +29,6 @@ export function formatQuantity(value: string | number) {
 }
 
 export function formatMoney(value: string | number, currency: string) {
-  const normalized = normalizeDecimal(value)
-  const fraction = normalized.fraction.slice(0, 4).replace(/0+$/, "").padEnd(2, "0")
-  const parts = new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).formatToParts(BigInt(normalized.whole))
-  let lastNumberPart = -1
-  parts.forEach((part, index) => {
-    if (part.type === "integer" || part.type === "group") lastNumberPart = index
-  })
-  const decimalSeparator = new Intl.NumberFormat(undefined, { minimumFractionDigits: 1 }).formatToParts(1.1).find((part) => part.type === "decimal")?.value ?? "."
-  parts.splice(lastNumberPart + 1, 0, { type: "decimal", value: decimalSeparator }, { type: "fraction", value: fraction })
-  return parts.map((part) => part.value).join("")
+  return formatBusinessMoney(value, currency)
 }
+import { formatBusinessMoney } from "@/features/business/currency"
