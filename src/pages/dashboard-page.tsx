@@ -8,6 +8,7 @@ import { getFinanceDateRange, type FinancePeriod } from "@/features/finance/fina
 import { formatExpenseMoney } from "@/features/finance/finance-money"
 import { useFinancialSummary } from "@/features/finance/finance-queries"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/layout/page-header"
 import { InventoryStatus, RecordedSalesTrend } from "@/pages/dashboard-visualizations"
 
 const financeRoles = ["owner", "manager"]
@@ -31,10 +32,12 @@ export function DashboardPage() {
   if (isBusinessLoading || !business) return <p className="rounded-xl border bg-card p-8 text-center text-muted-foreground" role="status">Loading workspace overview…</p>
 
   return <section className="space-y-6">
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div><p className="text-sm font-medium text-primary">Dashboard</p><h1 className="mt-1 break-words text-3xl font-semibold tracking-tight">Welcome to {business.name}</h1><p className="mt-2 text-muted-foreground">A current view of your inventory and business activity.</p></div>
-      <p className="text-sm text-muted-foreground">Signed in as {user?.email ?? "your account"}</p>
-    </header>
+    <PageHeader
+      actions={<p className="text-sm text-muted-foreground">Signed in as {user?.email ?? "your account"}</p>}
+      description="A current view of your inventory and business activity."
+      eyebrow="Dashboard"
+      title={`Welcome to ${business.name}`}
+    />
 
     <section aria-label="Dashboard date range" className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-3 sm:items-end">
       <label className="space-y-1.5 text-sm"><span>Period</span><select className={inputClass} onChange={(event) => setPeriod(event.target.value as FinancePeriod)} value={period}><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="custom">Custom</option></select></label>

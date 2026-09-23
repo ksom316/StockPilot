@@ -254,7 +254,8 @@ describe("authentication routes", () => {
 
     render(<SignOutHarness />)
     expect(await screen.findByRole("heading", { name: /welcome to northstar market/i })).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: /sign out/i }))
+    await user.click(screen.getByRole("button", { name: /account menu/i }))
+    await user.click(screen.getByRole("menuitem", { name: /sign out/i }))
     expect(await screen.findByRole("heading", { name: /sign in to stockpilot/i })).toBeInTheDocument()
     expect(screen.queryByRole("heading", { name: /welcome to northstar market/i })).not.toBeInTheDocument()
   })
