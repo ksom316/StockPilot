@@ -14,6 +14,8 @@ Phase 10 explains and summarizes supplied facts. Forecasts, reorder quantities, 
 
 `AiProvider` is the server-only seam. `OpenRouterProvider` uses `fetch`, a configured model, JSON response mode, temperature zero, an 18-second default timeout, and no retries or fallback model. `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` are required at runtime; neither is a `VITE_*` variable.
 
+For local development and testing, `OPENROUTER_MODEL=openrouter/free` is an acceptable smoke-test choice. Production model selection remains deployment configuration and is never hardcoded in browser code.
+
 Provider JSON must contain exactly:
 
 ```json
@@ -53,5 +55,17 @@ Automated tests use a fake provider and need no OpenRouter secret. For an option
 7. Send one request: `$payload = @{ businessId = $businessId; period = 'THIS_MONTH'; question = 'Summarize the available business facts for this month.' } | ConvertTo-Json; $result = Invoke-RestMethod -Method Post -Uri "$apiUrl/functions/v1/ai-analyst" -Headers @{ apikey = $anonKey; Authorization = "Bearer $token" } -ContentType 'application/json' -Body $payload`.
 8. Inspect only safe response metadata: `$result | Select-Object requestId, @{n='EvidenceIds';e={$_.evidence.id -join ','}}, @{n='LimitationCount';e={$_.limitations.Count}}, @{n='SuggestedQuestionCount';e={$_.suggestedQuestions.Count}}`. Function logs should contain only the request ID, normalized result, provider/model, timing/token counts, and schema version. Do not print the bearer token, request headers, prompt/context, answer, provider payload, or provider key.
 9. Stop the function. Clear shell variables with `Remove-Variable token, anonKey, securePassword, email, payload, result -ErrorAction SilentlyContinue` and delete the ignored secret file with `Remove-Item -LiteralPath supabase/functions/.env.local`. If the OpenRouter key was exposed anywhere client-visible or recorded, revoke/rotate it in OpenRouter immediately and remove the exposed artifact/history.
+
+The completed local smoke used `openrouter/free` and observed provider `openrouter`, model `openrouter/free`, context schema version `1`, a successful request, grounded answer/evidence rendering, and no browser/provider secret exposure.
+
+Phase 10 is single-turn: no conversation history, prompt/answer persistence, background requests, or Phase 11 recommendations are included.
+
+## Production deployment checklist
+
+- Configure Edge Function secrets/configuration only: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, optional `OPENROUTER_BASE_URL`, `AI_PROVIDER_TIMEOUT_MS`, and the exact deployed `AI_ALLOWED_ORIGINS` value.
+- Set secrets with `supabase secrets set` or the platform secret manager from a secure shell. Never expose provider secrets through `VITE_*`, frontend deployment variables, browser bundles, logs, or client requests.
+- Deploy the `ai-analyst` function, verify the production origin allowlist, and smoke-test with an authorized owner/manager and an enabled `ai_analyst` module using safe response metadata only.
+- Keep production model selection configurable; `openrouter/free` is for development/testing and is not a required production choice.
+- Monitor only the existing content-free usage/error metadata and quota behavior. Rotate the provider key immediately if exposure is suspected.
 
 For hosted Supabase, set secrets with `supabase secrets set` from a secure local shell and set `AI_ALLOWED_ORIGINS` to the exact deployed origin. Do not pass secrets via frontend deployment variables.
