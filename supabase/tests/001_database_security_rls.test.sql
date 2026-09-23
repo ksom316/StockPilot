@@ -126,6 +126,12 @@ values
     'SKU-B'
   );
 
+-- Phase 12A moves membership administration behind Team-module RPCs.
+update public.business_modules
+set enabled = true
+where business_id = '10000000-0000-0000-0000-000000000001'
+  and module = 'team';
+
 set local role service_role;
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 
@@ -241,10 +247,15 @@ set enabled = true
 where business_id = '10000000-0000-0000-0000-000000000001'
   and module = 'sales';
 
-update public.business_members
-set role = 'manager'
-where business_id = '10000000-0000-0000-0000-000000000001'
-  and user_id = '00000000-0000-0000-0000-000000000002';
+do $team$
+begin
+  perform public.change_team_member_role(
+    '10000000-0000-0000-0000-000000000001',
+    (select id from public.business_members where business_id = '10000000-0000-0000-0000-000000000001' and user_id = '00000000-0000-0000-0000-000000000002'),
+    'manager'
+  );
+end;
+$team$;
 
 reset role;
 
@@ -289,10 +300,15 @@ select set_config(
   true
 );
 
-update public.business_members
-set role = 'employee'
-where business_id = '10000000-0000-0000-0000-000000000001'
-  and user_id = '00000000-0000-0000-0000-000000000002';
+do $team$
+begin
+  perform public.change_team_member_role(
+    '10000000-0000-0000-0000-000000000001',
+    (select id from public.business_members where business_id = '10000000-0000-0000-0000-000000000001' and user_id = '00000000-0000-0000-0000-000000000002'),
+    'employee'
+  );
+end;
+$team$;
 
 reset role;
 
@@ -380,10 +396,18 @@ select set_config(
   true
 );
 
-update public.business_members
-set role = 'owner'
-where business_id = '10000000-0000-0000-0000-000000000001'
-  and user_id = '00000000-0000-0000-0000-000000000002';
+do $team$
+begin
+  perform public.change_team_member_role(
+    '10000000-0000-0000-0000-000000000001',
+    (select id from public.business_members where business_id = '10000000-0000-0000-0000-000000000001' and user_id = '00000000-0000-0000-0000-000000000002'),
+    'owner'
+  );
+  raise exception 'expected self-escalation denial';
+exception
+  when sqlstate '42501' then null;
+end;
+$team$;
 
 reset role;
 
