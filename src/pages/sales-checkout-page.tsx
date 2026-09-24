@@ -14,6 +14,7 @@ import type { BasicCustomer } from "@/features/customers/customer-types"
 import { formatQuantity } from "@/features/inventory/inventory-format"
 import { parseDatabaseQuantity, parseQuantity } from "@/features/inventory/inventory-decimal"
 import { useInventoryProducts } from "@/features/inventory/inventory-queries"
+import type { Product } from "@/features/inventory/inventory-types"
 import { calculateSaleLineTotal, calculateSaleTotal, formatSaleMoney, parseSalePrice } from "@/features/sales/sales-money"
 import { useRecordSale } from "@/features/sales/sales-queries"
 import type { PaymentMethod, RecordedSale, SalesChannel } from "@/features/sales/sales-types"
@@ -24,6 +25,21 @@ interface CartLine {
   sku: string | null
   quantity: string
   unitPrice: string
+  sellingUnit: string
+  sellingConversionQuantity: string
+}
+
+function sellingOptions(product: Product) {
+  return [{ unit: product.baseUnit, conversionQuantity: "1", sellingPrice: product.sellingPrice }, ...(product.sellingUnits ?? [])]
+}
+
+function convertedInventoryQuantity(quantity: string, conversionQuantity: string) {
+  const parsedQuantity = parseQuantity(quantity)
+  const parsedConversion = parseQuantity(conversionQuantity)
+  if (!parsedQuantity || !parsedConversion) return null
+  const product = parsedQuantity.scaled * parsedConversion.scaled
+  if (product % 1000n !== 0n) return null
+  return product / 1000n
 }
 
 interface FieldErrors {
@@ -43,6 +59,7 @@ export function SalesCheckoutPage() {
   const [selectedProductId, setSelectedProductId] = useState("")
   const [quantity, setQuantity] = useState("1")
   const [unitPrice, setUnitPrice] = useState("")
+  const [sellingUnit, setSellingUnit] = useState("")
   const [notes, setNotes] = useState("")
   const [cart, setCart] = useState<CartLine[]>([])
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -98,10 +115,18 @@ export function SalesCheckoutPage() {
     if (existing) {
       setQuantity(existing.quantity)
       setUnitPrice(existing.unitPrice)
+      setSellingUnit(existing.sellingUnit)
     } else if (!preservePrice) {
       const product = activeProducts.find((item) => item.id === productId)
       setUnitPrice(product?.sellingPrice ?? "")
+      setSellingUnit(product?.baseUnit ?? "")
     }
+  }
+
+  const selectSellingUnit = (unit: string) => {
+    setSellingUnit(unit)
+    const option = selectedProduct && sellingOptions(selectedProduct).find((item) => item.unit === unit)
+    if (option) setUnitPrice(option.sellingPrice)
   }
 
   const addItem = (event: FormEvent<HTMLFormElement>) => {
@@ -113,7 +138,10 @@ export function SalesCheckoutPage() {
     if (!parsedQuantity) nextErrors.quantity = "Enter a quantity greater than zero with up to 3 decimal places."
     const parsedPrice = parseSalePrice(unitPrice)
     if (!parsedPrice) nextErrors.price = "Enter a price of zero or more with up to 4 decimal places."
-    if (selectedProduct && parsedQuantity && parsedQuantity.scaled > parseDatabaseQuantity(selectedProduct.currentQuantity).scaled) {
+    const selectedOption = selectedProduct && sellingOptions(selectedProduct).find((option) => option.unit === sellingUnit)
+    const convertedQuantity = selectedProduct && parsedQuantity && selectedOption ? convertedInventoryQuantity(parsedQuantity.value, selectedOption.conversionQuantity) : null
+    if (selectedProduct && parsedQuantity && (!selectedOption || convertedQuantity === null)) nextErrors.quantity = "This quantity cannot be represented safely in inventory precision. Choose a smaller quantity or another selling unit."
+    if (selectedProduct && convertedQuantity !== null && convertedQuantity > parseDatabaseQuantity(selectedProduct.currentQuantity).scaled) {
       nextErrors.quantity = `Quantity exceeds the available stock (${formatQuantity(selectedProduct.currentQuantity)} ${selectedProduct.baseUnit}).`
     }
     setErrors(nextErrors)
@@ -131,6 +159,8 @@ export function SalesCheckoutPage() {
       sku: selectedProduct.sku,
       quantity: parsedQuantity.value,
       unitPrice: parsedPrice.value,
+      sellingUnit: selectedOption?.unit ?? selectedProduct.baseUnit,
+      sellingConversionQuantity: selectedOption?.conversionQuantity ?? "1",
     }
     const nextCart = existing
       ? cart.map((item) => item.productId === line.productId ? line : item)
@@ -152,6 +182,7 @@ export function SalesCheckoutPage() {
     setSelectedProductId(line.productId)
     setQuantity(line.quantity)
     setUnitPrice(line.unitPrice)
+    setSellingUnit(line.sellingUnit)
     setErrors({})
     setFormError("")
   }
@@ -163,6 +194,7 @@ export function SalesCheckoutPage() {
       setSelectedProductId("")
       setQuantity("1")
       setUnitPrice("")
+      setSellingUnit("")
     }
   }
 
@@ -170,6 +202,7 @@ export function SalesCheckoutPage() {
     setSelectedProductId("")
     setQuantity("1")
     setUnitPrice("")
+    setSellingUnit("")
     setErrors({})
     setFormError("")
   }
@@ -195,7 +228,8 @@ export function SalesCheckoutPage() {
         return
       }
       const parsedLineQuantity = parseQuantity(line.quantity)
-      if (!parsedLineQuantity || parsedLineQuantity.scaled > parseDatabaseQuantity(product.currentQuantity).scaled) {
+      const lineConversion = convertedInventoryQuantity(line.quantity, line.sellingConversionQuantity)
+      if (!parsedLineQuantity || lineConversion === null || lineConversion > parseDatabaseQuantity(product.currentQuantity).scaled) {
         setFormError(`${line.name} no longer has enough available stock. Adjust the quantity and try again.`)
         return
       }
@@ -205,7 +239,7 @@ export function SalesCheckoutPage() {
     submissionLock.current = true
     try {
       const recorded = await recordSale.mutateAsync({
-        items: cart.map((line) => ({ product_id: line.productId, quantity: line.quantity, unit_price: line.unitPrice })),
+        items: cart.map((line) => ({ product_id: line.productId, quantity: line.quantity, unit_price: line.unitPrice, ...(line.sellingUnit !== activeProducts.find((product) => product.id === line.productId)?.baseUnit ? { selling_unit: line.sellingUnit } : {}) })),
         notes: notes.trim() || null,
         customerId: customersEnabled ? customerId || null : null,
         salesChannel,
@@ -217,6 +251,7 @@ export function SalesCheckoutPage() {
       setSelectedProductId("")
       setQuantity("1")
       setUnitPrice("")
+      setSellingUnit("")
       setCustomerId("")
       setSalesChannel("walk_in")
       setPaymentMethod("cash")
@@ -252,9 +287,10 @@ export function SalesCheckoutPage() {
             <form className="mt-5 space-y-4" noValidate onSubmit={addItem}>
               <label className="block space-y-1.5"><span className="text-sm font-medium">Search products</span><input autoComplete="off" className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setSearch(event.target.value)} placeholder="Product name or SKU" type="search" value={search} /></label>
               <label className="block space-y-1.5"><span className="text-sm font-medium">Product</span><select aria-describedby={errors.product ? "sale-product-error" : undefined} aria-invalid={Boolean(errors.product)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => selectProduct(event.target.value)} value={selectedProductId}><option value="">Choose a product</option>{matchingProducts.map((product) => <option key={product.id} value={product.id}>{product.name} · SKU {product.sku} · {formatQuantity(product.currentQuantity)} {product.baseUnit} available</option>)}</select>{errors.product && <p className="text-sm text-destructive" id="sale-product-error">{errors.product}</p>}{matchingProducts.length === 0 && <p className="text-sm text-muted-foreground">No active products match that search.</p>}</label>
-              {selectedProduct && <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="break-words font-medium">{selectedProduct.name}</span><span className="text-muted-foreground">SKU {selectedProduct.sku}</span></div><p className="mt-1 text-muted-foreground">Available stock: <span className="font-medium text-foreground">{formatQuantity(selectedProduct.currentQuantity)} {selectedProduct.baseUnit}</span> · Catalog price: <span className="font-medium text-foreground">{formatSaleMoney(selectedProduct.sellingPrice, business?.currency ?? "USD")} / {selectedProduct.baseUnit}</span></p></div>}
+              {selectedProduct && <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="break-words font-medium">{selectedProduct.name}</span><span className="text-muted-foreground">SKU {selectedProduct.sku}</span></div><p className="mt-1 text-muted-foreground">Available stock: <span className="font-medium text-foreground">{formatQuantity(selectedProduct.currentQuantity)} {selectedProduct.baseUnit}</span></p></div>}
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-1.5"><span className="text-sm font-medium">Quantity{selectedProduct ? ` (${selectedProduct.baseUnit})` : ""}</span><input aria-describedby={errors.quantity ? "sale-quantity-error" : "sale-quantity-help"} aria-invalid={Boolean(errors.quantity)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setQuantity(event.target.value); setErrors((current) => ({ ...current, quantity: undefined })) }} value={quantity} /><span className="block text-xs text-muted-foreground" id="sale-quantity-help">Up to 3 decimal places.</span>{errors.quantity && <span className="block text-sm text-destructive" id="sale-quantity-error">{errors.quantity}</span>}</label>
+                {selectedProduct && <label className="block space-y-1.5"><span className="text-sm font-medium">Selling unit</span><select aria-label="Selling unit" className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => selectSellingUnit(event.target.value)} value={sellingUnit}>{sellingOptions(selectedProduct).map((option) => <option key={option.unit} value={option.unit}>{option.unit} · {formatSaleMoney(option.sellingPrice, business?.currency ?? "USD")}</option>)}</select>{sellingUnit !== selectedProduct.baseUnit && <span className="block text-xs text-muted-foreground">1 {sellingUnit} = {sellingOptions(selectedProduct).find((option) => option.unit === sellingUnit)?.conversionQuantity} {selectedProduct.baseUnit}</span>}</label>}
+                <label className="block space-y-1.5"><span className="text-sm font-medium">Quantity{selectedProduct ? ` (${sellingUnit || selectedProduct.baseUnit})` : ""}</span><input aria-describedby={errors.quantity ? "sale-quantity-error" : "sale-quantity-help"} aria-invalid={Boolean(errors.quantity)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setQuantity(event.target.value); setErrors((current) => ({ ...current, quantity: undefined })) }} value={quantity} /><span className="block text-xs text-muted-foreground" id="sale-quantity-help">Up to 3 decimal places.</span>{errors.quantity && <span className="block text-sm text-destructive" id="sale-quantity-error">{errors.quantity}</span>}</label>
                 <label className="block space-y-1.5"><span className="text-sm font-medium">Unit price</span><input aria-describedby={errors.price ? "sale-price-error" : "sale-price-help"} aria-invalid={Boolean(errors.price)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setUnitPrice(event.target.value); setErrors((current) => ({ ...current, price: undefined })) }} value={unitPrice} /><span className="block text-xs text-muted-foreground" id="sale-price-help">Transaction price; does not change catalog price. Up to 4 decimals.</span>{errors.price && <span className="block text-sm text-destructive" id="sale-price-error">{errors.price}</span>}</label>
               </div>
               <div className="flex flex-wrap gap-2"><Button className="w-full sm:w-auto" disabled={recordSale.isPending} type="submit"><Plus aria-hidden="true" className="mr-2 size-4" />{editingLine ? "Update item in sale" : "Add to sale"}</Button>{editingLine && <Button onClick={cancelEditing} type="button" variant="outline">Cancel editing</Button>}</div>
@@ -266,7 +302,7 @@ export function SalesCheckoutPage() {
             {cart.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border p-6 text-center"><p className="font-medium">Your sale is empty</p><p className="mt-1 text-sm text-muted-foreground">Add a product to begin.</p></div> : <ul aria-label="Items in current sale" className="mt-4 divide-y divide-border">{cart.map((line) => {
               const liveProduct = activeProducts.find((product) => product.id === line.productId)
               const lineTotal = calculateSaleLineTotal(line.quantity, line.unitPrice)
-              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><button className="break-words text-left font-medium text-primary hover:underline" onClick={() => editLine(line)} type="button">{line.name}</button><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} {liveProduct?.baseUnit ?? "units"} × {formatSaleMoney(line.unitPrice, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{lineTotal === null ? "—" : formatSaleMoney(lineTotal, business?.currency ?? "USD")}</span></p><p className="mt-1 text-xs text-muted-foreground">{liveProduct ? `${formatQuantity(liveProduct.currentQuantity)} ${liveProduct.baseUnit} available` : "Product no longer active"}</p></div><div className="flex shrink-0 gap-2"><Button aria-label={`Remove ${line.name}`} onClick={() => removeLine(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
+              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><button className="break-words text-left font-medium text-primary hover:underline" onClick={() => editLine(line)} type="button">{line.name}</button><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} {line.sellingUnit} × {formatSaleMoney(line.unitPrice, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{lineTotal === null ? "—" : formatSaleMoney(lineTotal, business?.currency ?? "USD")}</span></p><p className="mt-1 text-xs text-muted-foreground">{liveProduct ? `${formatQuantity(liveProduct.currentQuantity)} ${liveProduct.baseUnit} available` : "Product no longer active"}</p></div><div className="flex shrink-0 gap-2"><Button aria-label={`Remove ${line.name}`} onClick={() => removeLine(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
             })}</ul>}
             <label className="mt-4 block space-y-1.5"><span className="text-sm font-medium">Sale note <span className="font-normal text-muted-foreground">(optional)</span></span><textarea className="min-h-20 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" maxLength={2000} onChange={(event) => setNotes(event.target.value)} placeholder="Add a note for this sale" value={notes} /></label>
             <dl className="mt-5 border-t border-border pt-4"><div className="flex items-center justify-between"><dt className="text-sm text-muted-foreground">Subtotal</dt><dd className="text-lg font-semibold tabular-nums">{total === null ? "—" : formatSaleMoney(total, business?.currency ?? "USD")}</dd></div><div className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><dt>Total</dt><dd>{total === null ? "—" : formatSaleMoney(total, business?.currency ?? "USD")}</dd></div></dl>

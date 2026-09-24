@@ -19,12 +19,13 @@ const input: ProductInput = {
   purchaseConversionQuantity: "1",
   lowStockThreshold: "3.250",
   isActive: true,
+  sellingUnits: [],
 }
 
 describe("inventory service product writes", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    serviceMocks.insert.mockResolvedValue({ error: null })
+    serviceMocks.insert.mockReturnValue({ select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: "product-1" }, error: null }) }) })
     serviceMocks.eq.mockResolvedValue({ error: null })
     serviceMocks.update.mockReturnValue({ eq: serviceMocks.eq })
     serviceMocks.rpc.mockResolvedValue({ error: null })

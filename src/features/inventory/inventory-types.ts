@@ -20,6 +20,20 @@ export interface Product {
   currentQuantity: string
   lowStockThreshold: string
   isActive: boolean
+  sellingUnits?: SellingUnit[]
+}
+
+export interface SellingUnit {
+  id?: string
+  unit: string
+  conversionQuantity: string
+  sellingPrice: string
+}
+
+export interface SellingUnitInput {
+  unit: string
+  conversionQuantity: string
+  sellingPrice: string
 }
 
 export interface ProductInput {
@@ -34,6 +48,7 @@ export interface ProductInput {
   purchaseConversionQuantity: string
   lowStockThreshold: string
   isActive: boolean
+  sellingUnits?: SellingUnitInput[]
 }
 
 export interface CategoryInput {

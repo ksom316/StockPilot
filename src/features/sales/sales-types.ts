@@ -2,6 +2,7 @@ export interface SaleItemInput {
   product_id: string
   quantity: string
   unit_price: string
+  selling_unit?: string
 }
 
 export type SalesChannel = "walk_in" | "pickup" | "delivery" | "other"
@@ -49,6 +50,9 @@ export interface SaleItem {
   quantity: string
   unitPrice: string
   lineTotal: string
+  sellingUnit?: string
+  sellingConversionQuantity?: string
+  inventoryQuantity?: string
 }
 
 export interface SaleDetail extends Omit<SaleSummary, "itemCount" | "items"> {

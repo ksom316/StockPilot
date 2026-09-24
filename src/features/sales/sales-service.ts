@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase"
 import { SalesDataError, type RecordedSale, type RecordSaleInput, type SaleDetail, type SaleItem, type SaleSummary } from "@/features/sales/sales-types"
 
-const saleSelect = "id,business_id,sale_reference,customer_name_snapshot,sales_channel,payment_method,recorded_by_name_snapshot,recorded_by_role_snapshot,sold_at,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,sale_items(id,product_id,product_name,product_sku,quantity_text:quantity::text,unit_price_text:unit_price::text,line_total_text:line_total::text)"
+const saleSelect = "id,business_id,sale_reference,customer_name_snapshot,sales_channel,payment_method,recorded_by_name_snapshot,recorded_by_role_snapshot,sold_at,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,sale_items(id,product_id,product_name,product_sku,quantity_text:quantity::text,unit_price_text:unit_price::text,line_total_text:line_total::text,selling_unit,selling_conversion_quantity_text:selling_conversion_quantity::text,inventory_quantity_text:inventory_quantity::text)"
 
 export async function recordSale(input: RecordSaleInput): Promise<RecordedSale> {
   if (!supabase) throw new SalesDataError("Sales is not configured. Refresh and try again.")
@@ -100,6 +100,9 @@ function mapSaleItem(row: {
   quantity_text: string
   unit_price_text: string
   line_total_text: string
+  selling_unit?: string | null
+  selling_conversion_quantity_text?: string | null
+  inventory_quantity_text?: string | null
 }): SaleItem {
   return {
     id: row.id,
@@ -109,5 +112,8 @@ function mapSaleItem(row: {
     quantity: row.quantity_text,
     unitPrice: row.unit_price_text,
     lineTotal: row.line_total_text,
+    sellingUnit: row.selling_unit ?? undefined,
+    sellingConversionQuantity: row.selling_conversion_quantity_text ?? undefined,
+    inventoryQuantity: row.inventory_quantity_text ?? undefined,
   }
 }

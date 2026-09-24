@@ -26,7 +26,7 @@ export async function fetchCategories(businessId: string): Promise<Category[]> {
 export async function fetchProducts(businessId: string): Promise<Product[]> {
   const { data, error } = await requireClient()
     .from("products")
-    .select("id, business_id, category_id, name, sku, description, cost_price_text:cost_price::text, selling_price_text:selling_price::text, base_unit, purchase_unit, purchase_conversion_quantity_text:purchase_conversion_quantity::text, current_quantity_text:current_quantity::text, low_stock_threshold_text:low_stock_threshold::text, is_active, categories(name)")
+    .select("id, business_id, category_id, name, sku, description, cost_price_text:cost_price::text, selling_price_text:selling_price::text, base_unit, purchase_unit, purchase_conversion_quantity_text:purchase_conversion_quantity::text, current_quantity_text:current_quantity::text, low_stock_threshold_text:low_stock_threshold::text, is_active, categories(name), product_selling_units(id, unit, conversion_quantity_text:conversion_quantity::text, selling_price_text:selling_price::text)")
     .eq("business_id", businessId)
     .order("name")
 
@@ -49,6 +49,7 @@ export async function fetchProducts(businessId: string): Promise<Product[]> {
       currentQuantity: row.current_quantity_text,
       lowStockThreshold: row.low_stock_threshold_text,
       isActive: row.is_active,
+      sellingUnits: (row.product_selling_units ?? []).map((unit) => ({ id: unit.id, unit: unit.unit, conversionQuantity: unit.conversion_quantity_text, sellingPrice: unit.selling_price_text })),
     }
   })
 }
@@ -84,7 +85,7 @@ export async function fetchInventoryMovements(businessId: string): Promise<Inven
 }
 
 export async function createProduct(businessId: string, input: ProductInput): Promise<void> {
-  const { error } = await requireClient().from("products").insert({
+  const { data, error } = await requireClient().from("products").insert({
     business_id: businessId,
     category_id: input.categoryId,
     name: input.name,
@@ -97,9 +98,10 @@ export async function createProduct(businessId: string, input: ProductInput): Pr
     purchase_conversion_quantity: input.purchaseConversionQuantity,
     low_stock_threshold: input.lowStockThreshold,
     is_active: input.isActive,
-  })
+  }).select("id").single()
 
   if (error) throw new InventoryDataError("We couldn't create this product.", error.code)
+  await saveSellingUnits(data.id, input.sellingUnits ?? [])
 }
 
 export async function updateProduct(productId: string, input: ProductInput): Promise<void> {
@@ -118,6 +120,15 @@ export async function updateProduct(productId: string, input: ProductInput): Pro
   }).eq("id", productId)
 
   if (error) throw new InventoryDataError("We couldn't update this product.", error.code)
+  await saveSellingUnits(productId, input.sellingUnits ?? [])
+}
+
+async function saveSellingUnits(productId: string, units: NonNullable<ProductInput["sellingUnits"]>) {
+  const { error } = await requireClient().rpc("save_product_selling_units", {
+    p_product_id: productId,
+    p_units: units.map((unit) => ({ unit: unit.unit, conversion_quantity: unit.conversionQuantity, selling_price: unit.sellingPrice })),
+  })
+  if (error) throw new InventoryDataError("We couldn't save the additional selling units.", error.code)
 }
 
 export async function createCategory(businessId: string, input: CategoryInput): Promise<Category> {

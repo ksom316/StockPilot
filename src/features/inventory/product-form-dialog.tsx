@@ -5,7 +5,7 @@ import { DialogShell } from "@/components/ui/dialog-shell"
 import { FormField } from "@/components/ui/form-field"
 import { formatQuantity } from "@/features/inventory/inventory-format"
 import { InventoryDataError } from "@/features/inventory/inventory-service"
-import type { Category, CategoryInput, Product, ProductInput } from "@/features/inventory/inventory-types"
+import type { Category, CategoryInput, Product, ProductInput, SellingUnitInput } from "@/features/inventory/inventory-types"
 
 interface ProductFormDialogProps {
   product?: Product
@@ -25,6 +25,7 @@ interface Errors {
   baseUnit?: string
   purchaseUnit?: string
   purchaseConversionQuantity?: string
+  sellingUnits?: string
 }
 
 const moneyPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,4})?$/
@@ -41,6 +42,7 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
   const [baseUnit, setBaseUnit] = useState(product?.baseUnit ?? "unit")
   const [purchaseUnit, setPurchaseUnit] = useState(product?.purchaseUnit ?? "unit")
   const [purchaseConversionQuantity, setPurchaseConversionQuantity] = useState(product?.purchaseConversionQuantity ?? "1")
+  const [sellingUnits, setSellingUnits] = useState<SellingUnitInput[]>(product?.sellingUnits ?? [])
   const [lowStockThreshold, setLowStockThreshold] = useState(product?.lowStockThreshold ?? "0")
   const [isActive, setIsActive] = useState(product?.isActive ?? true)
   const [errors, setErrors] = useState<Errors>({})
@@ -65,6 +67,16 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
     else if (purchaseUnit.trim().length > 40) next.purchaseUnit = "Purchase unit must be 40 characters or fewer."
     const normalizedConversion = purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim()
     if (!quantityPattern.test(normalizedConversion) || normalizedConversion === "0" || /^0\.0*$/.test(normalizedConversion)) next.purchaseConversionQuantity = "Enter a conversion quantity greater than zero with up to 3 decimal places."
+    const seenUnits = new Set<string>()
+    sellingUnits.forEach((sellingUnit) => {
+      const normalizedUnit = sellingUnit.unit.trim().toLocaleLowerCase()
+      if (!normalizedUnit || normalizedUnit.length > 40) next.sellingUnits = "Each additional selling unit must be 1–40 characters."
+      else if (normalizedUnit === baseUnit.trim().toLocaleLowerCase()) next.sellingUnits = "Additional selling units must differ from the base selling unit."
+      else if (seenUnits.has(normalizedUnit)) next.sellingUnits = "Additional selling units must be unique."
+      else if (!quantityPattern.test(sellingUnit.conversionQuantity.trim()) || sellingUnit.conversionQuantity.trim() === "0" || /^0\.0*$/.test(sellingUnit.conversionQuantity.trim())) next.sellingUnits = "Enter a positive conversion quantity with up to 3 decimal places."
+      else if (!moneyPattern.test(sellingUnit.sellingPrice.trim())) next.sellingUnits = `Enter a valid ${currency} price with up to 4 decimal places.`
+      seenUnits.add(normalizedUnit)
+    })
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -88,6 +100,7 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
         purchaseConversionQuantity: purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim(),
         lowStockThreshold: lowStockThreshold.trim(),
         isActive,
+        sellingUnits: sellingUnits.map((sellingUnit) => ({ unit: sellingUnit.unit.trim(), conversionQuantity: sellingUnit.conversionQuantity.trim(), sellingPrice: sellingUnit.sellingPrice.trim() })),
       })
     } catch (error) {
       if (error instanceof InventoryDataError && error.code === "23505") {
@@ -139,6 +152,12 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
         </div>
         <FormField disabled={isSubmitting || purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase()} error={errors.purchaseConversionQuantity} id="purchase-conversion-quantity" inputMode="decimal" label={`1 ${purchaseUnit.trim() || "purchase unit"} contains`} onChange={(event) => setPurchaseConversionQuantity(event.target.value)} value={purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity} />
         {baseUnit.trim() && purchaseUnit.trim() && <p className="-mt-3 text-sm text-muted-foreground">1 {purchaseUnit.trim()} = {purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity || "?"} {baseUnit.trim()}</p>}
+        <section aria-labelledby="additional-selling-units-heading" className="space-y-3 rounded-lg border border-border p-4">
+          <div><h3 className="font-medium" id="additional-selling-units-heading">Additional selling options</h3><p className="mt-1 text-sm text-muted-foreground">Keep the base option above, or add options such as a carton or pack with their own selling price.</p></div>
+          {sellingUnits.map((sellingUnit, index) => <div className="rounded-md border border-border bg-muted/20 p-3" key={index}><div className="grid gap-4 sm:grid-cols-3"><FormField disabled={isSubmitting} id={`selling-unit-${index}`} label="Selling unit" maxLength={40} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: event.target.value } : item))} placeholder="carton" value={sellingUnit.unit} /><FormField disabled={isSubmitting} id={`selling-unit-conversion-${index}`} inputMode="decimal" label={`1 ${sellingUnit.unit.trim() || "unit"} contains`} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, conversionQuantity: event.target.value } : item))} value={sellingUnit.conversionQuantity} /><FormField disabled={isSubmitting} id={`selling-unit-price-${index}`} inputMode="decimal" label={`Selling price (${currency})`} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, sellingPrice: event.target.value } : item))} value={sellingUnit.sellingPrice} /></div><p className="mt-2 text-sm text-muted-foreground">{sellingUnit.unit.trim() && baseUnit.trim() ? `1 ${sellingUnit.unit.trim()} = ${sellingUnit.conversionQuantity || "?"} ${baseUnit.trim()}` : "Enter the unit relationship."}</p><Button disabled={isSubmitting} onClick={() => setSellingUnits((current) => current.filter((_, itemIndex) => itemIndex !== index))} size="sm" type="button" variant="outline">Remove</Button></div>)}
+          <Button disabled={isSubmitting} onClick={() => setSellingUnits((current) => [...current, { unit: "", conversionQuantity: "1", sellingPrice: sellingPrice }])} type="button" variant="outline">Add selling unit</Button>
+          {errors.sellingUnits && <p className="text-sm text-destructive" role="alert">{errors.sellingUnits}</p>}
+        </section>
         <FormField disabled={isSubmitting} error={errors.lowStockThreshold} id="low-stock-threshold" inputMode="decimal" label={`Low-stock threshold (${baseUnit.trim() || "selling units"})`} onChange={(event) => setLowStockThreshold(event.target.value)} value={lowStockThreshold} />
         <div className="space-y-2">
           <label className="block text-sm font-medium" htmlFor="product-description">Description <span className="font-normal text-muted-foreground">(optional)</span></label>
