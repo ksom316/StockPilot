@@ -14,6 +14,9 @@ export interface Product {
   description: string | null
   costPrice: string
   sellingPrice: string
+  baseUnit: string
+  purchaseUnit: string
+  purchaseConversionQuantity: string
   currentQuantity: string
   lowStockThreshold: string
   isActive: boolean
@@ -26,6 +29,9 @@ export interface ProductInput {
   description: string | null
   costPrice: string
   sellingPrice: string
+  baseUnit: string
+  purchaseUnit: string
+  purchaseConversionQuantity: string
   lowStockThreshold: string
   isActive: boolean
 }
@@ -49,6 +55,7 @@ export interface InventoryMovement {
   productId: string
   productName: string
   productSku: string
+  baseUnit: string
   movementType: InventoryMovementType
   quantity: string
   quantityBefore: string

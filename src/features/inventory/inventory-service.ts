@@ -26,7 +26,7 @@ export async function fetchCategories(businessId: string): Promise<Category[]> {
 export async function fetchProducts(businessId: string): Promise<Product[]> {
   const { data, error } = await requireClient()
     .from("products")
-    .select("id, business_id, category_id, name, sku, description, cost_price_text:cost_price::text, selling_price_text:selling_price::text, current_quantity_text:current_quantity::text, low_stock_threshold_text:low_stock_threshold::text, is_active, categories(name)")
+    .select("id, business_id, category_id, name, sku, description, cost_price_text:cost_price::text, selling_price_text:selling_price::text, base_unit, purchase_unit, purchase_conversion_quantity_text:purchase_conversion_quantity::text, current_quantity_text:current_quantity::text, low_stock_threshold_text:low_stock_threshold::text, is_active, categories(name)")
     .eq("business_id", businessId)
     .order("name")
 
@@ -43,6 +43,9 @@ export async function fetchProducts(businessId: string): Promise<Product[]> {
       description: row.description,
       costPrice: row.cost_price_text,
       sellingPrice: row.selling_price_text,
+      baseUnit: row.base_unit,
+      purchaseUnit: row.purchase_unit,
+      purchaseConversionQuantity: row.purchase_conversion_quantity_text,
       currentQuantity: row.current_quantity_text,
       lowStockThreshold: row.low_stock_threshold_text,
       isActive: row.is_active,
@@ -53,19 +56,20 @@ export async function fetchProducts(businessId: string): Promise<Product[]> {
 export async function fetchInventoryMovements(businessId: string): Promise<InventoryMovement[]> {
   const { data, error } = await requireClient()
     .from("inventory_movements")
-    .select("id, business_id, product_id, movement_type, quantity_text:quantity::text, quantity_before_text:quantity_before::text, quantity_after_text:quantity_after::text, reason, actor_user_id, source_type, source_reference, created_at, products(name, sku)")
+    .select("id, business_id, product_id, movement_type, quantity_text:quantity::text, quantity_before_text:quantity_before::text, quantity_after_text:quantity_after::text, reason, actor_user_id, source_type, source_reference, created_at, products(name, sku, base_unit)")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false })
 
   if (error) throw new InventoryDataError("We couldn't load movement history.", error.code)
   return (data ?? []).map((row) => {
-    const product = row.products as unknown as { name: string; sku: string | null } | null
+    const product = row.products as unknown as { name: string; sku: string | null; base_unit: string } | null
     return {
       id: row.id,
       businessId: row.business_id,
       productId: row.product_id,
       productName: product?.name ?? "Unknown product",
       productSku: product?.sku ?? "",
+      baseUnit: product?.base_unit ?? "unit",
       movementType: row.movement_type,
       quantity: row.quantity_text,
       quantityBefore: row.quantity_before_text,
@@ -88,6 +92,9 @@ export async function createProduct(businessId: string, input: ProductInput): Pr
     description: input.description,
     cost_price: input.costPrice,
     selling_price: input.sellingPrice,
+    base_unit: input.baseUnit,
+    purchase_unit: input.purchaseUnit,
+    purchase_conversion_quantity: input.purchaseConversionQuantity,
     low_stock_threshold: input.lowStockThreshold,
     is_active: input.isActive,
   })
@@ -103,6 +110,9 @@ export async function updateProduct(productId: string, input: ProductInput): Pro
     description: input.description,
     cost_price: input.costPrice,
     selling_price: input.sellingPrice,
+    base_unit: input.baseUnit,
+    purchase_unit: input.purchaseUnit,
+    purchase_conversion_quantity: input.purchaseConversionQuantity,
     low_stock_threshold: input.lowStockThreshold,
     is_active: input.isActive,
   }).eq("id", productId)

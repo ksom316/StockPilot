@@ -18,8 +18,8 @@ const categories = [
   { id: "cat-2", name: "Accessories", description: null },
 ]
 const products = [
-  { id: "p1", businessId: "business-1", categoryId: "cat-1", categoryName: "Electronics", name: "Barcode Scanner", sku: "SCAN-1", description: null, costPrice: "20", sellingPrice: "35", currentQuantity: "4", lowStockThreshold: "5", isActive: true },
-  { id: "p2", businessId: "business-1", categoryId: "cat-2", categoryName: "Accessories", name: "USB Cable", sku: "USB-9", description: null, costPrice: "2", sellingPrice: "5", currentQuantity: "0", lowStockThreshold: "2", isActive: true },
+  { id: "p1", businessId: "business-1", categoryId: "cat-1", categoryName: "Electronics", name: "Barcode Scanner", sku: "SCAN-1", description: null, costPrice: "20", sellingPrice: "35", baseUnit: "piece", purchaseUnit: "piece", purchaseConversionQuantity: "1", currentQuantity: "4", lowStockThreshold: "5", isActive: true },
+  { id: "p2", businessId: "business-1", categoryId: "cat-2", categoryName: "Accessories", name: "USB Cable", sku: "USB-9", description: null, costPrice: "2", sellingPrice: "5", baseUnit: "piece", purchaseUnit: "pack", purchaseConversionQuantity: "5", currentQuantity: "0", lowStockThreshold: "2", isActive: true },
 ]
 
 function queryResult<T>(data: T) {

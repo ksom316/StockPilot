@@ -11,6 +11,7 @@ import { formatQuantity } from "@/features/inventory/inventory-format"
 import { parseDatabaseQuantity, parseQuantity } from "@/features/inventory/inventory-decimal"
 import { useInventoryProducts } from "@/features/inventory/inventory-queries"
 import { calculatePurchaseLineTotal, calculatePurchaseTotal, formatPurchaseMoney, maximumPurchaseQuantityScaled, parseUnitCost } from "@/features/purchasing/purchasing-money"
+import { calculateBaseUnitCost, convertPurchaseQuantity } from "@/features/purchasing/purchase-conversion"
 import { usePurchasingSuppliers, useRecordPurchase } from "@/features/purchasing/purchasing-queries"
 import type { RecordedPurchase } from "@/features/purchasing/purchasing-types"
 
@@ -20,6 +21,10 @@ interface ReceiptLine {
   sku: string | null
   quantity: string
   unitCost: string
+  inventoryQuantity: string
+  baseUnit: string
+  purchaseUnit: string
+  conversionQuantity: string
 }
 
 interface FieldErrors {
@@ -77,7 +82,7 @@ export function PurchasingPage() {
     setSelectedProductId(productId)
     setErrors((current) => ({ ...current, product: undefined }))
     const product = activeProducts.find((item) => item.id === productId)
-    setUnitCost(product?.costPrice ?? "")
+    setUnitCost(product ? calculatePurchaseLineTotal(product.purchaseConversionQuantity, product.costPrice) ?? "" : "")
   }
 
   const addItem = (event: FormEvent<HTMLFormElement>) => {
@@ -87,17 +92,19 @@ export function PurchasingPage() {
     const nextErrors: FieldErrors = {}
     const parsedQuantity = parseQuantity(quantity)
     const parsedCost = parseUnitCost(unitCost)
+    const inventoryQuantity = selectedProduct && parsedQuantity ? convertPurchaseQuantity(parsedQuantity.value, selectedProduct.purchaseConversionQuantity) : null
     if (!selectedProduct) nextErrors.product = "Choose an active product."
     if (!parsedQuantity || parsedQuantity.scaled <= 0n) nextErrors.quantity = "Enter a quantity greater than zero with up to 3 decimal places."
+    else if (selectedProduct && !inventoryQuantity) nextErrors.quantity = "This purchase quantity cannot be represented in inventory with 3 decimal places."
     if (!parsedCost) nextErrors.unitCost = "Enter a unit cost of zero or more with up to 4 decimal places."
-    if (selectedProduct && parsedQuantity) {
-      const nextStock = parseDatabaseQuantity(selectedProduct.currentQuantity).scaled + parsedQuantity.scaled
+    if (selectedProduct && inventoryQuantity) {
+      const nextStock = parseDatabaseQuantity(selectedProduct.currentQuantity).scaled + parseDatabaseQuantity(inventoryQuantity).scaled
       if (nextStock > maximumPurchaseQuantityScaled) {
         nextErrors.quantity = "This receipt would exceed the maximum supported stock balance."
       }
     }
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length || !selectedProduct || !parsedQuantity || parsedQuantity.scaled <= 0n || !parsedCost) return
+    if (Object.keys(nextErrors).length || !selectedProduct || !parsedQuantity || parsedQuantity.scaled <= 0n || !parsedCost || !inventoryQuantity) return
 
     const line: ReceiptLine = {
       productId: selectedProduct.id,
@@ -105,6 +112,10 @@ export function PurchasingPage() {
       sku: selectedProduct.sku,
       quantity: parsedQuantity.value,
       unitCost: parsedCost.value,
+      inventoryQuantity,
+      baseUnit: selectedProduct.baseUnit,
+      purchaseUnit: selectedProduct.purchaseUnit,
+      conversionQuantity: selectedProduct.purchaseConversionQuantity,
     }
     if (calculatePurchaseLineTotal(line.quantity, line.unitCost) === null) {
       setErrors({ unitCost: "This quantity and cost exceed the maximum supported line total." })
@@ -218,11 +229,12 @@ export function PurchasingPage() {
               <form className="space-y-4" noValidate onSubmit={addItem}>
                 <label className="block space-y-1.5"><span className="text-sm font-medium">Search products</span><input autoComplete="off" disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setProductSearch(event.target.value)} placeholder="Product name or SKU" type="search" value={productSearch} /></label>
                 <label className="block space-y-1.5"><span className="text-sm font-medium">Product</span><select aria-describedby={errors.product ? "purchase-product-error" : undefined} aria-invalid={Boolean(errors.product)} disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => selectProduct(event.target.value)} value={selectedProductId}><option value="">Choose a product</option>{matchingProducts.map((product) => <option key={product.id} value={product.id}>{product.name} · SKU {product.sku}</option>)}</select>{errors.product && <p className="text-sm text-destructive" id="purchase-product-error">{errors.product}</p>}{matchingProducts.length === 0 && <p className="text-sm text-muted-foreground">No active products match that search.</p>}</label>
-                {selectedProduct && <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="break-words font-medium">{selectedProduct.name}</span><span className="text-muted-foreground">SKU {selectedProduct.sku}</span></div><p className="mt-1 text-muted-foreground">Current stock: <span className="font-medium text-foreground">{formatQuantity(selectedProduct.currentQuantity)}</span> · Latest received cost: <span className="font-medium text-foreground">{formatPurchaseMoney(selectedProduct.costPrice, business?.currency ?? "USD")}</span></p></div>}
+                {selectedProduct && <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="break-words font-medium">{selectedProduct.name}</span><span className="text-muted-foreground">SKU {selectedProduct.sku}</span></div><p className="mt-1 text-muted-foreground">Current stock: <span className="font-medium text-foreground">{formatQuantity(selectedProduct.currentQuantity)} {selectedProduct.baseUnit}</span> · Latest base cost: <span className="font-medium text-foreground">{formatPurchaseMoney(selectedProduct.costPrice, business?.currency ?? "USD")} / {selectedProduct.baseUnit}</span></p><p className="mt-1 text-muted-foreground">1 {selectedProduct.purchaseUnit} = {formatQuantity(selectedProduct.purchaseConversionQuantity)} {selectedProduct.baseUnit}</p></div>}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block space-y-1.5"><span className="text-sm font-medium">Quantity received</span><input aria-describedby={errors.quantity ? "purchase-quantity-error" : "purchase-quantity-help"} aria-invalid={Boolean(errors.quantity)} disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setQuantity(event.target.value); setErrors((current) => ({ ...current, quantity: undefined })) }} value={quantity} /><span className="block text-xs text-muted-foreground" id="purchase-quantity-help">Up to 3 decimal places.</span>{errors.quantity && <span className="block text-sm text-destructive" id="purchase-quantity-error">{errors.quantity}</span>}</label>
-                  <label className="block space-y-1.5"><span className="text-sm font-medium">Unit cost</span><input aria-describedby={errors.unitCost ? "purchase-cost-error" : "purchase-cost-help"} aria-invalid={Boolean(errors.unitCost)} disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setUnitCost(event.target.value); setErrors((current) => ({ ...current, unitCost: undefined })) }} value={unitCost} /><span className="block text-xs text-muted-foreground" id="purchase-cost-help">This receipt's cost; up to 4 decimal places. Zero is allowed.</span>{errors.unitCost && <span className="block text-sm text-destructive" id="purchase-cost-error">{errors.unitCost}</span>}</label>
+                  <label className="block space-y-1.5"><span className="text-sm font-medium">Quantity received{selectedProduct ? ` (${selectedProduct.purchaseUnit})` : ""}</span><input aria-describedby={errors.quantity ? "purchase-quantity-error" : "purchase-quantity-help"} aria-invalid={Boolean(errors.quantity)} disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setQuantity(event.target.value); setErrors((current) => ({ ...current, quantity: undefined })) }} value={quantity} /><span className="block text-xs text-muted-foreground" id="purchase-quantity-help">Up to 3 decimal places.</span>{errors.quantity && <span className="block text-sm text-destructive" id="purchase-quantity-error">{errors.quantity}</span>}</label>
+                  <label className="block space-y-1.5"><span className="text-sm font-medium">Cost per purchase unit{selectedProduct ? ` (${selectedProduct.purchaseUnit})` : ""}</span><input aria-describedby={errors.unitCost ? "purchase-cost-error" : "purchase-cost-help"} aria-invalid={Boolean(errors.unitCost)} disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setUnitCost(event.target.value); setErrors((current) => ({ ...current, unitCost: undefined })) }} value={unitCost} /><span className="block text-xs text-muted-foreground" id="purchase-cost-help">This receipt's cost per purchase unit; up to 4 decimal places. Zero is allowed.</span>{errors.unitCost && <span className="block text-sm text-destructive" id="purchase-cost-error">{errors.unitCost}</span>}</label>
                 </div>
+                {selectedProduct && quantity.trim() && convertPurchaseQuantity(quantity, selectedProduct.purchaseConversionQuantity) && <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm" role="status"><strong>{formatQuantity(quantity)} {selectedProduct.purchaseUnit}</strong> × {formatQuantity(selectedProduct.purchaseConversionQuantity)} {selectedProduct.baseUnit} = <strong>{convertPurchaseQuantity(quantity, selectedProduct.purchaseConversionQuantity)} {selectedProduct.baseUnit} added</strong>{unitCost.trim() && calculateBaseUnitCost(unitCost, selectedProduct.purchaseConversionQuantity) ? <span className="mt-1 block text-xs text-muted-foreground">Base-unit cost: {formatPurchaseMoney(calculateBaseUnitCost(unitCost, selectedProduct.purchaseConversionQuantity)!, business?.currency ?? "USD")} / {selectedProduct.baseUnit}</span> : null}</div>}
                 <Button className="w-full sm:w-auto" disabled={pending} type="submit"><Plus aria-hidden="true" className="mr-2 size-4" />{items.some((line) => line.productId === selectedProductId) ? "Update item in receipt" : "Add to receipt"}</Button>
               </form>
             </div>
@@ -232,7 +244,7 @@ export function PurchasingPage() {
             <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold" id="current-receipt-heading">Current receipt</h2><p aria-live="polite" className="mt-1 text-sm text-muted-foreground">{items.length} {items.length === 1 ? "item" : "items"}</p></div>{items.length > 0 && <Button disabled={pending} onClick={() => { markMaterialChange(); setItems([]) }} size="sm" variant="outline"><RotateCcw aria-hidden="true" className="mr-1.5 size-4" />Clear receipt</Button>}</div>
             {items.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border p-6 text-center"><p className="font-medium">Your receipt is empty</p><p className="mt-1 text-sm text-muted-foreground">Add received stock to begin.</p></div> : <ul aria-label="Items in current receipt" className="mt-4 divide-y divide-border">{items.map((line) => {
               const lineTotal = calculatePurchaseLineTotal(line.quantity, line.unitCost)
-              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><p className="break-words font-medium">{line.name}</p><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} × {formatPurchaseMoney(line.unitCost, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{lineTotal === null ? "—" : formatPurchaseMoney(lineTotal, business?.currency ?? "USD")}</span></p></div><div className="flex shrink-0 gap-2"><Button disabled={pending} aria-label={`Edit ${line.name}`} onClick={() => editItem(line)} size="sm" variant="outline">Edit</Button><Button disabled={pending} aria-label={`Remove ${line.name}`} onClick={() => removeItem(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
+              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><p className="break-words font-medium">{line.name}</p><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} {line.purchaseUnit} × {formatPurchaseMoney(line.unitCost, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{lineTotal === null ? "—" : formatPurchaseMoney(lineTotal, business?.currency ?? "USD")}</span></p><p className="mt-1 text-xs text-muted-foreground">Adds {line.inventoryQuantity} {line.baseUnit} · 1 {line.purchaseUnit} = {line.conversionQuantity} {line.baseUnit}</p></div><div className="flex shrink-0 gap-2"><Button disabled={pending} aria-label={`Edit ${line.name}`} onClick={() => editItem(line)} size="sm" variant="outline">Edit</Button><Button disabled={pending} aria-label={`Remove ${line.name}`} onClick={() => removeItem(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
             })}</ul>}
             <label className="mt-4 block space-y-1.5"><span className="text-sm font-medium">Receipt note <span className="font-normal text-muted-foreground">(optional)</span></span><textarea disabled={pending} className="min-h-20 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" maxLength={2000} onChange={(event) => { setNotes(event.target.value); markMaterialChange() }} placeholder="Add a note for this receipt" value={notes} /></label>
             <dl className="mt-5 border-t border-border pt-4"><div className="flex items-center justify-between gap-3"><dt className="text-sm text-muted-foreground">Receipt total</dt><dd className="text-right text-lg font-semibold tabular-nums">{total === null ? "—" : formatPurchaseMoney(total, business?.currency ?? "USD")}</dd></div></dl>

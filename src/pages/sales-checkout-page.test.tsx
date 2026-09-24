@@ -23,9 +23,9 @@ vi.mock("@/features/customers/customer-queries", () => ({
 }))
 
 const products: Product[] = [
-  { id: "p1", businessId: "business-1", categoryId: null, categoryName: null, name: "Coffee Beans", sku: "COF-1", description: null, costPrice: "4", sellingPrice: "10.25", currentQuantity: "8.5", lowStockThreshold: "1", isActive: true },
-  { id: "p2", businessId: "business-1", categoryId: null, categoryName: null, name: "Tea", sku: "TEA-1", description: null, costPrice: "2", sellingPrice: "5", currentQuantity: "3", lowStockThreshold: "1", isActive: true },
-  { id: "p3", businessId: "business-1", categoryId: null, categoryName: null, name: "Inactive", sku: "OFF-1", description: null, costPrice: "1", sellingPrice: "1", currentQuantity: "10", lowStockThreshold: "1", isActive: false },
+  { id: "p1", businessId: "business-1", categoryId: null, categoryName: null, name: "Coffee Beans", sku: "COF-1", description: null, costPrice: "4", sellingPrice: "10.25", baseUnit: "kg", purchaseUnit: "carton", purchaseConversionQuantity: "10", currentQuantity: "8.5", lowStockThreshold: "1", isActive: true },
+  { id: "p2", businessId: "business-1", categoryId: null, categoryName: null, name: "Tea", sku: "TEA-1", description: null, costPrice: "2", sellingPrice: "5", baseUnit: "pack", purchaseUnit: "pack", purchaseConversionQuantity: "1", currentQuantity: "3", lowStockThreshold: "1", isActive: true },
+  { id: "p3", businessId: "business-1", categoryId: null, categoryName: null, name: "Inactive", sku: "OFF-1", description: null, costPrice: "1", sellingPrice: "1", baseUnit: "piece", purchaseUnit: "piece", purchaseConversionQuantity: "1", currentQuantity: "10", lowStockThreshold: "1", isActive: false },
 ]
 
 function renderCheckout() {

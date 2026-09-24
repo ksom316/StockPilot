@@ -26,6 +26,11 @@ export interface PurchaseItem {
   quantity: string
   unitCost: string
   lineTotal: string
+  baseUnit: string
+  purchaseUnit: string
+  conversionQuantity: string
+  inventoryQuantity: string
+  baseUnitCost: string
 }
 
 export interface PurchaseSummary {

@@ -21,9 +21,10 @@ vi.mock("@/features/purchasing/purchasing-queries", () => ({
 }))
 
 const products: Product[] = [
-  { id: "p1", businessId: "business-1", categoryId: null, categoryName: null, name: "Coffee Beans", sku: "COF-1", description: null, costPrice: "4.1250", sellingPrice: "10.25", currentQuantity: "8.5", lowStockThreshold: "1", isActive: true },
-  { id: "p2", businessId: "business-1", categoryId: null, categoryName: null, name: "Tea", sku: "TEA-1", description: null, costPrice: "0", sellingPrice: "5", currentQuantity: "3", lowStockThreshold: "1", isActive: true },
-  { id: "p3", businessId: "business-1", categoryId: null, categoryName: null, name: "Inactive", sku: "OFF-1", description: null, costPrice: "1", sellingPrice: "1", currentQuantity: "10", lowStockThreshold: "1", isActive: false },
+  { id: "p1", businessId: "business-1", categoryId: null, categoryName: null, name: "Coffee Beans", sku: "COF-1", description: null, costPrice: "4.1250", sellingPrice: "10.25", baseUnit: "kg", purchaseUnit: "kg", purchaseConversionQuantity: "1", currentQuantity: "8.5", lowStockThreshold: "1", isActive: true },
+  { id: "p2", businessId: "business-1", categoryId: null, categoryName: null, name: "Tea", sku: "TEA-1", description: null, costPrice: "0", sellingPrice: "5", baseUnit: "pack", purchaseUnit: "pack", purchaseConversionQuantity: "1", currentQuantity: "3", lowStockThreshold: "1", isActive: true },
+  { id: "p3", businessId: "business-1", categoryId: null, categoryName: null, name: "Inactive", sku: "OFF-1", description: null, costPrice: "1", sellingPrice: "1", baseUnit: "piece", purchaseUnit: "piece", purchaseConversionQuantity: "1", currentQuantity: "10", lowStockThreshold: "1", isActive: false },
+  { id: "p4", businessId: "business-1", categoryId: null, categoryName: null, name: "Chicken Wings", sku: "WINGS", description: null, costPrice: "30", sellingPrice: "45", baseUnit: "kg", purchaseUnit: "carton", purchaseConversionQuantity: "10", currentQuantity: "0", lowStockThreshold: "10", isActive: true },
 ]
 
 const suppliers: Supplier[] = [
@@ -52,7 +53,7 @@ describe("purchasing receiving page", () => {
     expect(screen.getByRole("option", { name: /no supplier \/ unspecified/i })).toBeInTheDocument()
     expect(screen.queryByRole("option", { name: /Inactive/ })).not.toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText("Product"), "p1")
-    expect(screen.getByLabelText(/unit cost/i)).toHaveValue("4.1250")
+    expect(screen.getByLabelText(/cost per purchase unit/i)).toHaveValue("4.125")
     await user.click(screen.getByRole("button", { name: /add to receipt/i }))
     await user.click(screen.getByRole("button", { name: /record receipt/i }))
     expect(mocks.mutateAsync).toHaveBeenCalledWith({
@@ -86,6 +87,20 @@ describe("purchasing receiving page", () => {
     expect(mocks.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ supplierId: "s2" }))
   })
 
+  it("previews carton conversion and keeps receipt input in purchase units", async () => {
+    const user = userEvent.setup()
+    mocks.mutateAsync.mockResolvedValue({ id: "purchase-4", purchase_reference: "PUR-000004" })
+    renderPurchasing()
+    await user.selectOptions(screen.getByLabelText(/^product$/i), "p4")
+    fireEvent.change(screen.getByLabelText(/quantity received/i), { target: { value: "3" } })
+    fireEvent.change(screen.getByLabelText(/cost per purchase unit/i), { target: { value: "300" } })
+    expect(screen.getByRole("status")).toHaveTextContent(/3 carton.*10 kg.*30 kg added/i)
+    expect(screen.getByRole("status")).toHaveTextContent(/base-unit cost:.*30.*kg/i)
+    await user.click(screen.getByRole("button", { name: /add to receipt/i }))
+    await user.click(screen.getByRole("button", { name: /record receipt/i }))
+    expect(mocks.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ items: [{ product_id: "p4", quantity: "3", unit_cost: "300" }] }))
+  })
+
   it("validates quantity and cost, accepts zero cost, upserts duplicate products, edits and removes lines", async () => {
     const user = userEvent.setup()
     renderPurchasing()
@@ -97,10 +112,10 @@ describe("purchasing receiving page", () => {
     await user.click(screen.getByRole("button", { name: /add to receipt/i }))
     expect(screen.getByText("Enter a quantity greater than zero with up to 3 decimal places.")).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/quantity received/i), { target: { value: "2" } })
-    fireEvent.change(screen.getByLabelText(/unit cost/i), { target: { value: "-1" } })
+    fireEvent.change(screen.getByLabelText(/cost per purchase unit/i), { target: { value: "-1" } })
     await user.click(screen.getByRole("button", { name: /add to receipt/i }))
     expect(screen.getByText(/unit cost of zero or more/i)).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/unit cost/i), { target: { value: "0" } })
+    fireEvent.change(screen.getByLabelText(/cost per purchase unit/i), { target: { value: "0" } })
     await user.click(screen.getByRole("button", { name: /add to receipt/i }))
     expect(screen.queryByText("Subtotal")).not.toBeInTheDocument()
     expect(screen.getByText("Receipt total").parentElement).toHaveTextContent("US$0.00")
@@ -118,7 +133,7 @@ describe("purchasing receiving page", () => {
     renderPurchasing()
     await user.selectOptions(screen.getByLabelText(/^product$/i), "p1")
     fireEvent.change(screen.getByLabelText(/quantity received/i), { target: { value: "2.125" } })
-    fireEvent.change(screen.getByLabelText(/unit cost/i), { target: { value: "50.1234" } })
+    fireEvent.change(screen.getByLabelText(/cost per purchase unit/i), { target: { value: "50.1234" } })
     await user.click(screen.getByRole("button", { name: /add to receipt/i }))
     expect(screen.getByText("Receipt total").parentElement).toHaveTextContent("US$106.51")
     expect(screen.getByRole("list", { name: /items in current receipt/i })).toHaveTextContent(/2\.125.*US\$50\.1234.*US\$106\.5122/)

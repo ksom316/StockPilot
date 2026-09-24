@@ -147,8 +147,8 @@ export function InventoryMovementsPage() {
                 <Td className="whitespace-nowrap text-muted-foreground">{formatTimestamp(movement.createdAt)}</Td>
                 <Td className="max-w-56"><Link className="font-medium hover:text-primary hover:underline" to={`/inventory/movements?productId=${encodeURIComponent(movement.productId)}`}>{movement.productName}</Link><p className="mt-1 text-xs text-muted-foreground">SKU {movement.productSku}</p></Td>
                 <Td><MovementType type={movement.movementType} /></Td>
-                <Td align="right" className={`whitespace-nowrap font-semibold ${movement.quantity.startsWith("-") ? "text-foreground" : "text-primary"}`}>{movement.quantity.startsWith("-") ? <ArrowDownRight aria-hidden="true" className="mr-1 inline size-4" /> : <ArrowUpRight aria-hidden="true" className="mr-1 inline size-4" />}{signedQuantity(movement.quantity)}</Td>
-                <Td align="right" className="whitespace-nowrap">{formatQuantity(movement.quantityBefore)} → {formatQuantity(movement.quantityAfter)}</Td>
+                <Td align="right" className={`whitespace-nowrap font-semibold ${movement.quantity.startsWith("-") ? "text-foreground" : "text-primary"}`}>{movement.quantity.startsWith("-") ? <ArrowDownRight aria-hidden="true" className="mr-1 inline size-4" /> : <ArrowUpRight aria-hidden="true" className="mr-1 inline size-4" />}{signedQuantity(movement.quantity)} {movement.baseUnit}</Td>
+                <Td align="right" className="whitespace-nowrap">{formatQuantity(movement.quantityBefore)} → {formatQuantity(movement.quantityAfter)} {movement.baseUnit}</Td>
                 <Td className="max-w-64 whitespace-normal break-words text-muted-foreground">{movement.reason ?? "—"}</Td>
                 <Td className="text-muted-foreground">{movement.actorUserId ? "Team member" : "System"}</Td>
                 <Td className="text-muted-foreground">{sourceLabels[movement.sourceType] ?? movement.sourceType}</Td>
@@ -170,10 +170,10 @@ function MovementCard({ movement }: { movement: InventoryMovement }) {
     <li className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0"><Link className="break-words font-semibold hover:text-primary hover:underline" to={`/inventory/movements?productId=${encodeURIComponent(movement.productId)}`}>{movement.productName}</Link><p className="mt-1 text-xs text-muted-foreground">SKU {movement.productSku}</p></div>
-        <span className="shrink-0 text-right font-semibold">{negative ? <ArrowDownRight aria-hidden="true" className="mr-1 inline size-4" /> : <ArrowUpRight aria-hidden="true" className="mr-1 inline size-4" />}{signedQuantity(movement.quantity)}</span>
+        <span className="shrink-0 text-right font-semibold">{negative ? <ArrowDownRight aria-hidden="true" className="mr-1 inline size-4" /> : <ArrowUpRight aria-hidden="true" className="mr-1 inline size-4" />}{signedQuantity(movement.quantity)} {movement.baseUnit}</span>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2"><MovementType type={movement.movementType} /><span className="text-xs text-muted-foreground">{sourceLabels[movement.sourceType] ?? movement.sourceType}</span></div>
-      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-muted-foreground">Balance before</dt><dd className="mt-1 font-medium">{formatQuantity(movement.quantityBefore)}</dd></div><div><dt className="text-xs text-muted-foreground">Balance after</dt><dd className="mt-1 font-medium">{formatQuantity(movement.quantityAfter)}</dd></div></dl>
+      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-muted-foreground">Balance before</dt><dd className="mt-1 font-medium">{formatQuantity(movement.quantityBefore)} {movement.baseUnit}</dd></div><div><dt className="text-xs text-muted-foreground">Balance after</dt><dd className="mt-1 font-medium">{formatQuantity(movement.quantityAfter)} {movement.baseUnit}</dd></div></dl>
       {movement.reason && <p className="mt-3 break-words text-sm text-muted-foreground">{movement.reason}</p>}
       <p className="mt-3 text-xs text-muted-foreground">{formatTimestamp(movement.createdAt)} · {movement.actorUserId ? "Team member" : "System"}</p>
     </li>

@@ -49,7 +49,7 @@ describe("purchasing service", () => {
   })
 
   it("loads purchase history scoped to business with numeric snapshots kept as strings", async () => {
-    mock.order.mockResolvedValue({ data: [{ id: "purchase-1", business_id: "b1", purchase_reference: "PUR-000001", received_at: "2026-09-22T10:00:00Z", supplier_name: "Original supplier", subtotal_text: "999999999999999.9999", total_text: "999999999999999.9999", notes: null, created_by: "user-1", purchase_items: [{ id: "item-1", product_name: "Original product", product_sku: "ORIG-1", quantity_text: "123456789012345.678", unit_cost_text: "123456789012345.6789", line_total_text: "999999999999999.9999" }] }], error: null })
+    mock.order.mockResolvedValue({ data: [{ id: "purchase-1", business_id: "b1", purchase_reference: "PUR-000001", received_at: "2026-09-22T10:00:00Z", supplier_name: "Original supplier", subtotal_text: "999999999999999.9999", total_text: "999999999999999.9999", notes: null, created_by: "user-1", purchase_items: [{ id: "item-1", product_name: "Original product", product_sku: "ORIG-1", quantity_text: "123456789012345.678", unit_cost_text: "123456789012345.6789", line_total_text: "999999999999999.9999", base_unit: "piece", purchase_unit: "carton", conversion_quantity_text: "10.000", inventory_quantity_text: "999999999999999.999", base_unit_cost_text: "12345678901234.5679" }] }], error: null })
 
     await expect(fetchPurchases("b1")).resolves.toEqual([{
       id: "purchase-1", purchaseReference: "PUR-000001", receivedAt: "2026-09-22T10:00:00Z", supplierName: "Original supplier",
@@ -62,9 +62,9 @@ describe("purchasing service", () => {
   })
 
   it("scopes purchase details by both current business and purchase ID and returns stored snapshots", async () => {
-    mock.maybeSingle.mockResolvedValue({ data: { id: "purchase-1", business_id: "b1", purchase_reference: "PUR-000001", received_at: "2026-09-22T10:00:00Z", supplier_name: "Snapshot supplier", subtotal_text: "25.0000", total_text: "25.0000", notes: null, created_by: "user-1", purchase_items: [{ id: "item-1", product_name: "Old name", product_sku: "OLD-SKU", quantity_text: "2.5", unit_cost_text: "10.0000", line_total_text: "25.0000" }] }, error: null })
+    mock.maybeSingle.mockResolvedValue({ data: { id: "purchase-1", business_id: "b1", purchase_reference: "PUR-000001", received_at: "2026-09-22T10:00:00Z", supplier_name: "Snapshot supplier", subtotal_text: "25.0000", total_text: "25.0000", notes: null, created_by: "user-1", purchase_items: [{ id: "item-1", product_name: "Old name", product_sku: "OLD-SKU", quantity_text: "2.5", unit_cost_text: "10.0000", line_total_text: "25.0000", base_unit: "pack", purchase_unit: "carton", conversion_quantity_text: "20.000", inventory_quantity_text: "50.000", base_unit_cost_text: "0.5000" }] }, error: null })
 
-    await expect(fetchPurchase("b1", "purchase-1")).resolves.toMatchObject({ supplierName: "Snapshot supplier", items: [{ productName: "Old name", productSku: "OLD-SKU", unitCost: "10.0000", lineTotal: "25.0000" }] })
+    await expect(fetchPurchase("b1", "purchase-1")).resolves.toMatchObject({ supplierName: "Snapshot supplier", items: [{ productName: "Old name", productSku: "OLD-SKU", unitCost: "10.0000", lineTotal: "25.0000", baseUnit: "pack", purchaseUnit: "carton", conversionQuantity: "20.000", inventoryQuantity: "50.000", baseUnitCost: "0.5000" }] })
     expect(mock.from).toHaveBeenCalledWith("purchases")
     expect(mock.eq).toHaveBeenNthCalledWith(1, "business_id", "b1")
     expect(mock.eq).toHaveBeenNthCalledWith(2, "id", "purchase-1")

@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase"
 import { PurchasingDataError, type ManagedSupplier, type PurchaseDetail, type PurchaseItem, type PurchaseSummary, type RecordedPurchase, type RecordPurchaseInput, type Supplier, type SupplierInput } from "@/features/purchasing/purchasing-types"
 
-const purchaseSelect = "id,business_id,purchase_reference,received_at,supplier_name,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,purchase_items(id,product_name,product_sku,quantity_text:quantity::text,unit_cost_text:unit_cost::text,line_total_text:line_total::text)"
+const purchaseSelect = "id,business_id,purchase_reference,received_at,supplier_name,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,purchase_items(id,product_name,product_sku,quantity_text:quantity::text,unit_cost_text:unit_cost::text,line_total_text:line_total::text,base_unit,purchase_unit,conversion_quantity_text:purchase_conversion_quantity::text,inventory_quantity_text:inventory_quantity::text,base_unit_cost_text:base_unit_cost::text)"
 
 function requireClient() {
   if (!supabase) throw new PurchasingDataError("Purchasing is not configured. Refresh and try again.")
@@ -78,8 +78,8 @@ export async function fetchPurchase(businessId: string, purchaseId: string): Pro
   return { id: data.id, purchaseReference: data.purchase_reference, receivedAt: data.received_at, supplierName: data.supplier_name, subtotal: data.subtotal_text, total: data.total_text, notes: data.notes, items: (data.purchase_items ?? []).map(mapPurchaseItem) }
 }
 
-function mapPurchaseItem(row: { id: string; product_name: string; product_sku: string | null; quantity_text: string; unit_cost_text: string; line_total_text: string }): PurchaseItem {
-  return { id: row.id, productName: row.product_name, productSku: row.product_sku, quantity: row.quantity_text, unitCost: row.unit_cost_text, lineTotal: row.line_total_text }
+function mapPurchaseItem(row: { id: string; product_name: string; product_sku: string | null; quantity_text: string; unit_cost_text: string; line_total_text: string; base_unit: string; purchase_unit: string; conversion_quantity_text: string; inventory_quantity_text: string; base_unit_cost_text: string }): PurchaseItem {
+  return { id: row.id, productName: row.product_name, productSku: row.product_sku, quantity: row.quantity_text, unitCost: row.unit_cost_text, lineTotal: row.line_total_text, baseUnit: row.base_unit, purchaseUnit: row.purchase_unit, conversionQuantity: row.conversion_quantity_text, inventoryQuantity: row.inventory_quantity_text, baseUnitCost: row.base_unit_cost_text }
 }
 
 export async function recordPurchase(input: RecordPurchaseInput): Promise<RecordedPurchase> {

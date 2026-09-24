@@ -68,7 +68,7 @@ export function StockOperationDialog({ product, onClose, onSubmit }: StockOperat
     <DialogShell description={`${product.name} · SKU ${product.sku}`} onClose={onClose} title="Manage stock">
       <div className="mb-5 rounded-lg bg-muted p-4">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Recorded quantity</p>
-        <p className="mt-1 text-2xl font-semibold">{formatQuantity(product.currentQuantity)}</p>
+        <p className="mt-1 text-2xl font-semibold">{formatQuantity(product.currentQuantity)} {product.baseUnit}</p>
       </div>
       <form className="space-y-5" noValidate onSubmit={handleSubmit}>
         <div className="space-y-2">
@@ -87,7 +87,7 @@ export function StockOperationDialog({ product, onClose, onSubmit }: StockOperat
           </fieldset>
         )}
         <div className="space-y-2">
-          <label className="block text-sm font-medium" htmlFor="stock-quantity">{operation === "correction" ? "Physical count" : "Quantity"}</label>
+          <label className="block text-sm font-medium" htmlFor="stock-quantity">{operation === "correction" ? `Physical count (${product.baseUnit})` : `Quantity (${product.baseUnit})`}</label>
           <input aria-describedby="quantity-help" className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" disabled={isSubmitting} id="stock-quantity" inputMode="decimal" onChange={(event) => { setQuantity(event.target.value); setFormError("") }} placeholder={operation === "correction" ? "Enter the counted total" : "Enter an amount"} value={quantity} />
           <p className="text-xs text-muted-foreground" id="quantity-help">Up to 3 decimal places. The final balance is confirmed by the server.</p>
         </div>
@@ -97,7 +97,7 @@ export function StockOperationDialog({ product, onClose, onSubmit }: StockOperat
         </div>
         {quantity.trim() && result && !result.error && (
           <div aria-live="polite" className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
-            Resulting quantity preview: <strong>{result.resultingQuantity}</strong>
+            Resulting quantity preview: <strong>{result.resultingQuantity} {product.baseUnit}</strong>
             <p className="mt-1 text-xs text-muted-foreground">Preview only. The server uses the latest stock balance when recording the operation.</p>
           </div>
         )}

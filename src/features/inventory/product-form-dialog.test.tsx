@@ -12,8 +12,8 @@ describe("ProductFormDialog", () => {
     const onSubmit = vi.fn()
     render(<ProductFormDialog categories={[]} currency="USD" onClose={vi.fn()} onSubmit={onSubmit} />)
     const dialog = screen.getByRole("dialog")
-    await user.clear(within(dialog).getByLabelText(/cost price/i))
-    await user.type(within(dialog).getByLabelText(/cost price/i), "1.12345")
+    await user.clear(within(dialog).getByLabelText(/cost per selling unit/i))
+    await user.type(within(dialog).getByLabelText(/cost per selling unit/i), "1.12345")
     await user.click(within(dialog).getByRole("button", { name: /add product/i }))
     expect(within(dialog).getByText("Enter a product name.")).toBeInTheDocument()
     expect(within(dialog).getByLabelText(/sku \(optional\)/i)).toBeInTheDocument()
@@ -32,8 +32,29 @@ describe("ProductFormDialog", () => {
     expect(await within(dialog).findByText(/sku is already used/i)).toBeInTheDocument()
   })
 
+  it("captures purchase-to-selling-unit conversion and rejects zero", async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<ProductFormDialog categories={[]} currency="GHS" onClose={vi.fn()} onSubmit={onSubmit} />)
+    const dialog = screen.getByRole("dialog")
+    await user.type(within(dialog).getByLabelText(/product name/i), "Chicken Wings")
+    await user.clear(within(dialog).getByLabelText(/^selling unit$/i))
+    await user.type(within(dialog).getByLabelText(/^selling unit$/i), "kg")
+    await user.clear(within(dialog).getByLabelText(/^purchase unit$/i))
+    await user.type(within(dialog).getByLabelText(/^purchase unit$/i), "carton")
+    await user.clear(within(dialog).getByLabelText(/1 carton contains/i))
+    await user.type(within(dialog).getByLabelText(/1 carton contains/i), "0")
+    await user.click(within(dialog).getByRole("button", { name: /add product/i }))
+    expect(within(dialog).getByText(/conversion quantity greater than zero/i)).toBeInTheDocument()
+
+    await user.clear(within(dialog).getByLabelText(/1 carton contains/i))
+    await user.type(within(dialog).getByLabelText(/1 carton contains/i), "10")
+    await user.click(within(dialog).getByRole("button", { name: /add product/i }))
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ baseUnit: "kg", purchaseUnit: "carton", purchaseConversionQuantity: "10" }))
+  })
+
   it("keeps current quantity read-only while editing", () => {
-    const product = { id: "p1", businessId: "b1", categoryId: null, categoryName: null, name: "Cable", sku: "C1", description: null, costPrice: "1", sellingPrice: "2", currentQuantity: "7.500", lowStockThreshold: "2", isActive: true } satisfies Product
+    const product = { id: "p1", businessId: "b1", categoryId: null, categoryName: null, name: "Cable", sku: "C1", description: null, costPrice: "1", sellingPrice: "2", baseUnit: "piece", purchaseUnit: "carton", purchaseConversionQuantity: "12", currentQuantity: "7.500", lowStockThreshold: "2", isActive: true } satisfies Product
     render(<ProductFormDialog categories={[]} currency="USD" onClose={vi.fn()} onSubmit={vi.fn()} product={product} />)
     expect(screen.getByText(/current quantity:/i)).toHaveTextContent("7.5")
     expect(screen.queryByRole("textbox", { name: /current quantity/i })).not.toBeInTheDocument()
