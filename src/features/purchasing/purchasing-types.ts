@@ -9,6 +9,17 @@ export interface Supplier {
 export interface ManagedSupplier extends Supplier {
   notes: string | null
   isActive: boolean
+  products?: SupplierProductLink[]
+}
+
+export interface SupplierProductLink {
+  id: string
+  supplierId: string
+  productId: string
+  supplierName: string
+  productName: string
+  productSku: string | null
+  isPreferred: boolean
 }
 
 export interface SupplierInput {

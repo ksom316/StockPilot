@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/auth-context"
 import { useBusiness } from "@/features/business/business-context"
 import { useNotificationSummary } from "@/features/notifications/notification-queries"
-import { BusinessIcon } from "@/features/business/business-icons"
+import { BusinessLogo } from "@/components/branding/business-logo"
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher"
 import { useProfileIdentity } from "@/features/profile/profile-identity"
 
 export function AppShell() {
   const { session, user, signOut } = useAuth()
   const { business, enabledModules, role } = useBusiness()
-  const { avatarId, isUpdating: isUpdatingAvatar, updateAvatar } = useProfileIdentity(user?.id ?? null)
+  const { avatarId, avatarPath, displayName, error: profileError, isUpdating: isUpdatingAvatar, removeAvatar, updateAvatar, uploadAvatar } = useProfileIdentity(user?.id ?? null)
   const notificationItems = useNotificationSummary()
   const unreadNotificationCount = notificationItems.filter((item) => !item.readAt).length
   const navigate = useNavigate()
@@ -134,7 +134,7 @@ export function AppShell() {
               <Menu aria-hidden="true" className="size-5" />
             </Button>
             <span className="min-w-0 lg:hidden"><WorkspaceSwitcher /></span>
-            <span className="hidden min-w-0 items-center gap-1.5 text-sm text-muted-foreground lg:flex"><BusinessIcon className="size-4" id={business.iconId} />Workspace: <span className="font-medium text-foreground">{business.name}</span></span>
+            <span className="hidden min-w-0 items-center gap-1.5 text-sm text-muted-foreground lg:flex"><BusinessLogo className="size-6" iconId={business.iconId} name={business.name} path={business.logoPath} />Workspace: <span className="font-medium text-foreground">{business.name}</span></span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <Button aria-label={`Notifications${unreadNotificationCount ? `, ${unreadNotificationCount} unread` : ""}`} asChild className="relative" size="icon" variant="ghost">
@@ -148,7 +148,7 @@ export function AppShell() {
               </Link>
             </Button>
             <span aria-hidden="true" className="mx-1 h-6 w-px bg-border" />
-            <AccountMenu avatarId={avatarId} isSigningOut={isSigningOut} isUpdatingAvatar={isUpdatingAvatar} label={user?.email ?? "Your account"} onAvatarChange={(nextAvatarId) => void updateAvatar(nextAvatarId)} onSignOut={() => void handleSignOut()} />
+            <AccountMenu avatarId={avatarId} avatarLabel={displayName || user?.email || "Your account"} avatarPath={avatarPath} isSigningOut={isSigningOut} isUpdatingAvatar={isUpdatingAvatar} label={user?.email ?? "Your account"} onAvatarChange={(nextAvatarId) => void updateAvatar(nextAvatarId)} onAvatarRemove={removeAvatar} onAvatarUpload={uploadAvatar} onSignOut={() => void handleSignOut()} profileError={profileError} />
           </div>
         </header>
         {signOutError && <p className="border-b border-border bg-card px-4 py-2 text-right text-sm text-destructive sm:px-6" role="alert">{signOutError}</p>}

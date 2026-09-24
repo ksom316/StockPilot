@@ -24,6 +24,7 @@ vi.mock("@/features/customers/customer-queries", () => ({
 }))
 vi.mock("@/features/purchasing/purchasing-queries", () => ({
   usePurchasingSuppliers: () => ({ data: [], isLoading: false, isError: false }),
+  useSupplierProducts: () => ({ data: [], isLoading: false, isError: false }),
   useRecordPurchase: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useManagedSuppliers: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
   useSupplierMutations: () => ({ create: { mutateAsync: vi.fn(), isPending: false }, update: { mutateAsync: vi.fn(), isPending: false }, setActive: { mutateAsync: vi.fn(), isPending: false } }),

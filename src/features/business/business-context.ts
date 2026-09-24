@@ -11,6 +11,7 @@ export interface Business {
   currency: BusinessCurrency
   timezone: string
   iconId: BusinessIconId
+  logoPath: string | null
 }
 
 export interface Membership {
@@ -51,6 +52,8 @@ export interface BusinessContextValue {
   createBusiness: (input: CreateBusinessInput) => Promise<void>
   setModuleEnabled: (module: OptionalModule, enabled: boolean) => Promise<void>
   setBusinessIcon: (iconId: BusinessIconId) => Promise<void>
+  setBusinessLogo: (file: File) => Promise<void>
+  removeBusinessLogo: () => Promise<void>
   setBusinessCurrency: (currency: BusinessCurrency) => Promise<void>
 }
 

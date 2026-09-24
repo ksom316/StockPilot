@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useBusiness } from "@/features/business/business-context"
 import { inventoryKeys } from "@/features/inventory/inventory-queries"
 import { createSupplier, fetchManagedSuppliers, fetchPurchase, fetchPurchases, fetchSuppliers, recordPurchase, setSupplierActive, updateSupplier } from "@/features/purchasing/purchasing-service"
+import { fetchSupplierProducts, linkSupplierProduct, setPreferredSupplier, unlinkSupplierProduct } from "@/features/purchasing/supplier-products"
 import type { RecordPurchaseInput, SupplierInput } from "@/features/purchasing/purchasing-types"
 import { PurchasingDataError } from "@/features/purchasing/purchasing-types"
 import { financeKeys } from "@/features/finance/finance-keys"
@@ -14,6 +15,24 @@ export const purchasingKeys = {
   supplierManagement: (businessId: string) => ["purchasing", businessId, "supplier-management"] as const,
   history: (businessId: string) => ["purchasing", businessId, "history"] as const,
   detail: (businessId: string, id: string) => ["purchasing", businessId, "purchase", id] as const,
+  supplierProducts: (businessId: string) => ["purchasing", businessId, "supplier-products"] as const,
+}
+
+export function useSupplierProducts() {
+  const { business } = useBusiness()
+  const businessId = business?.id ?? ""
+  return useQuery({ queryKey: purchasingKeys.supplierProducts(businessId), queryFn: () => fetchSupplierProducts(businessId), enabled: Boolean(businessId) })
+}
+
+export function useSupplierProductMutations() {
+  const { business } = useBusiness()
+  const client = useQueryClient()
+  const invalidate = () => business ? client.invalidateQueries({ queryKey: purchasingKeys.supplierProducts(business.id) }) : undefined
+  return {
+    link: useMutation({ mutationFn: ({ supplierId, productId }: { supplierId: string; productId: string }) => { if (!business) throw new PurchasingDataError("Your workspace is unavailable."); return linkSupplierProduct(business.id, supplierId, productId) }, onSuccess: invalidate }),
+    prefer: useMutation({ mutationFn: ({ id, productId }: { id: string; productId: string }) => { if (!business) throw new PurchasingDataError("Your workspace is unavailable."); return setPreferredSupplier(business.id, id, productId) }, onSuccess: invalidate }),
+    unlink: useMutation({ mutationFn: (id: string) => { if (!business) throw new PurchasingDataError("Your workspace is unavailable."); return unlinkSupplierProduct(business.id, id) }, onSuccess: invalidate }),
+  }
 }
 
 export function useManagedSuppliers() {

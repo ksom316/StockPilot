@@ -14,6 +14,7 @@ import { useInventoryCatalog, useInventoryMutations } from "@/features/inventory
 import type { Product, ProductInput, StockMovementInput } from "@/features/inventory/inventory-types"
 import { ProductFormDialog } from "@/features/inventory/product-form-dialog"
 import { StockOperationDialog } from "@/features/inventory/stock-operation-dialog"
+import { ProductSupplierSummary, SupplierProductManagerDialog } from "@/features/purchasing/supplier-product-manager-dialog"
 
 function StockBadge({ state }: { state: StockState }) {
   const variant = state === "Out of stock" ? "destructive" : state === "Low stock" ? "warning" : "success"
@@ -31,6 +32,7 @@ export function InventoryPage() {
   const [showProductForm, setShowProductForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [stockProduct, setStockProduct] = useState<Product | null>(null)
+  const [supplierProduct, setSupplierProduct] = useState<Product | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const stockParam = searchParams.get("stock")
@@ -134,21 +136,22 @@ export function InventoryPage() {
           <TableContainer className="hidden md:block">
             <Table>
               <TableHead><tr><Th>Product</Th><Th>Category</Th><Th align="right">Price</Th><Th align="right">Quantity</Th><Th>Stock</Th><Th><span className="sr-only">Actions</span></Th></tr></TableHead>
-              <TableBody>{filteredProducts.map((product) => <ProductRow canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} onStock={() => setStockProduct(product)} product={product} />)}</TableBody>
+              <TableBody>{filteredProducts.map((product) => <ProductRow canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} onManageSuppliers={() => setSupplierProduct(product)} onStock={() => setStockProduct(product)} product={product} />)}</TableBody>
             </Table>
           </TableContainer>
-          <div className="grid gap-3 md:hidden">{filteredProducts.map((product) => <ProductCard canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} onStock={() => setStockProduct(product)} product={product} />)}</div>
+          <div className="grid gap-3 md:hidden">{filteredProducts.map((product) => <ProductCard canManage={canManage} currency={business.currency} key={product.id} onEdit={() => setEditingProduct(product)} onManageSuppliers={() => setSupplierProduct(product)} onStock={() => setStockProduct(product)} product={product} />)}</div>
         </>
       )}
 
       {(showProductForm || editingProduct) && business && <ProductFormDialog categories={categories.data ?? []} currency={business.currency} onClose={() => { setShowProductForm(false); setEditingProduct(null) }} onCreateCategory={async (input) => mutations.createCategory.mutateAsync(input)} onSubmit={saveProduct} product={editingProduct ?? undefined} />}
       {showCategories && <CategoryManagerDialog categories={categories.data ?? []} onClose={() => setShowCategories(false)} onCreate={async (input) => { await mutations.createCategory.mutateAsync(input) }} onUpdate={(id, input) => mutations.updateCategory.mutateAsync({ id, input })} />}
       {stockProduct && <StockOperationDialog onClose={() => setStockProduct(null)} onSubmit={recordMovement} product={stockProduct} />}
+      {supplierProduct && <SupplierProductManagerDialog onClose={() => setSupplierProduct(null)} productId={supplierProduct.id} productName={supplierProduct.name} />}
     </section>
   )
 }
 
-function ProductRow({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
+function ProductRow({ product, currency, canManage, onEdit, onStock, onManageSuppliers }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void; onManageSuppliers: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
   return <TableRow className={!product.isActive ? "opacity-60" : "hover:bg-muted/30"}>
     <Td><p className="font-medium">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">{product.sku ? `SKU ${product.sku}` : "No SKU"}{!product.isActive && " · Inactive"}</p></Td>
@@ -156,11 +159,11 @@ function ProductRow({ product, currency, canManage, onEdit, onStock }: { product
     <Td align="right">{formatMoney(product.sellingPrice, currency)}</Td>
     <Td align="right" className="font-medium">{formatQuantity(product.currentQuantity)} {product.baseUnit}</Td>
     <Td><StockBadge state={stockState} /></Td>
-    <Td><div className="flex justify-end gap-2"><Button asChild size="sm" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History aria-hidden="true" className="mr-1.5 size-3.5" />History</Link></Button>{canManage && <><Button aria-label={`Manage stock for ${product.name}`} onClick={onStock} size="sm" variant="outline"><ArrowUpDown className="mr-1.5 size-3.5" />Stock</Button><Button aria-label={`Edit ${product.name}`} onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button></>}</div></Td>
+    <Td><div className="flex justify-end gap-2"><Button asChild size="sm" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History aria-hidden="true" className="mr-1.5 size-3.5" />History</Link></Button>{canManage && <><Button aria-label={`Manage suppliers for ${product.name}`} onClick={onManageSuppliers} size="sm" variant="outline">Suppliers</Button><Button aria-label={`Manage stock for ${product.name}`} onClick={onStock} size="sm" variant="outline"><ArrowUpDown className="mr-1.5 size-3.5" />Stock</Button><Button aria-label={`Edit ${product.name}`} onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button></>}</div></Td>
   </TableRow>
 }
 
-function ProductCard({ product, currency, canManage, onEdit, onStock }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void }) {
+function ProductCard({ product, currency, canManage, onEdit, onStock, onManageSuppliers }: { product: Product; currency: string; canManage: boolean; onEdit: () => void; onStock: () => void; onManageSuppliers: () => void }) {
   const stockState = getStockState(product.currentQuantity, product.lowStockThreshold)
-  return <article className={`rounded-lg border border-border bg-card p-4 ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">{product.sku ? `SKU ${product.sku}` : "No SKU"} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)} / {product.baseUnit}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)} {product.baseUnit}</p></div></div><p className="mt-3 text-xs text-muted-foreground">Purchased as: 1 {product.purchaseUnit} = {formatQuantity(product.purchaseConversionQuantity)} {product.baseUnit}</p><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild className="w-full" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History className="mr-2 size-4" />History</Link></Button>{canManage && <Button className="w-full" onClick={onStock} variant="outline"><ArrowUpDown className="mr-2 size-4" />Manage stock</Button>}</div></article>
+  return <article className={`rounded-lg border border-border bg-card p-4 ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">{product.sku ? `SKU ${product.sku}` : "No SKU"} · {product.categoryName ?? "Uncategorized"}</p></div>{canManage && <Button aria-label={`Edit ${product.name}`} className="shrink-0" onClick={onEdit} size="sm" variant="outline"><Pencil className="size-3.5" /></Button>}</div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Selling price</p><p className="mt-1 font-medium">{formatMoney(product.sellingPrice, currency)} / {product.baseUnit}</p></div><div><p className="text-xs text-muted-foreground">Quantity</p><p className="mt-1 font-medium">{formatQuantity(product.currentQuantity)} {product.baseUnit}</p></div></div><p className="mt-3 text-xs text-muted-foreground">Purchased as: 1 {product.purchaseUnit} = {formatQuantity(product.purchaseConversionQuantity)} {product.baseUnit}</p><ProductSupplierSummary onManage={onManageSuppliers} productId={product.id} /><div className="mt-4 flex items-center justify-between"><StockBadge state={stockState} />{!product.isActive && <span className="text-xs text-muted-foreground">Inactive</span>}</div><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild className="w-full" variant="outline"><Link aria-label={`View stock history for ${product.name}`} to={`/inventory/movements?productId=${encodeURIComponent(product.id)}`}><History className="mr-2 size-4" />History</Link></Button>{canManage && <Button className="w-full" onClick={onStock} variant="outline"><ArrowUpDown className="mr-2 size-4" />Manage stock</Button>}</div></article>
 }

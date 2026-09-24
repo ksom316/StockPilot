@@ -23,4 +23,11 @@ describe("WorkspaceSwitcher", () => {
     await user.click(screen.getByRole("button", { name: /current workspace/i }))
     expect(screen.getByRole("menuitem", { name: /create business/i })).toHaveAttribute("href", "/businesses/new")
   })
+
+  it("keeps each workspace's logo metadata scoped to that workspace", async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><TestAuthProvider value={createAuthValue({ session: testSession, user: testUser })}><TestBusinessProvider value={createBusinessValue({ business: { ...testBusiness, logoPath: "businesses/business-1/logo-a.png" }, membership: testMembership, businesses: [{ ...testBusiness, logoPath: "businesses/business-1/logo-a.png", membershipId: testMembership.id, role: "owner" }, { ...testBusiness, id: "business-2", name: "Second Workspace", logoPath: "businesses/business-2/logo-b.png", membershipId: "membership-2", role: "employee" }] })}><WorkspaceSwitcher /></TestBusinessProvider></TestAuthProvider></MemoryRouter>)
+    await user.click(screen.getByRole("button", { name: /current workspace/i }))
+    expect(screen.getByRole("img", { name: "Second Workspace logo" })).toBeInTheDocument()
+  })
 })

@@ -6,6 +6,7 @@ export interface TeamMember {
   membershipId: string
   userId: string
   displayName: string
+  avatarPath: string | null
   email: string | null
   role: TeamRole
   status: TeamMemberStatus

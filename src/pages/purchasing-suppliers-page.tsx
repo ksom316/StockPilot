@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/state"
 import { useBusiness } from "@/features/business/business-context"
+import { SupplierProductManagerDialog } from "@/features/purchasing/supplier-product-manager-dialog"
 import { useManagedSuppliers, useSupplierMutations } from "@/features/purchasing/purchasing-queries"
 import type { ManagedSupplier, SupplierInput } from "@/features/purchasing/purchasing-types"
 
@@ -23,6 +24,7 @@ export function PurchasingSuppliersPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [form, setForm] = useState<SupplierInput>(blank)
   const [error, setError] = useState("")
+  const [managingSupplier, setManagingSupplier] = useState<ManagedSupplier | null>(null)
   const [status, setStatus] = useState("")
   const pending = mutations.create.isPending || mutations.update.isPending || mutations.setActive.isPending
   const filtered = useMemo(() => (query.data ?? []).filter((supplier) => (filter === "all" || (filter === "active" ? supplier.isActive : !supplier.isActive)) && [supplier.name, supplier.contactName, supplier.phone, supplier.email].some((value) => value?.toLocaleLowerCase().includes(term.trim().toLocaleLowerCase()))), [filter, query.data, term])
@@ -108,8 +110,10 @@ export function PurchasingSuppliersPage() {
           {supplier.phone && <p className="break-all text-sm text-muted-foreground">{supplier.phone}</p>}
           {supplier.email && <p className="break-all text-sm text-muted-foreground">{supplier.email}</p>}
           {supplier.notes && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{supplier.notes}</p>}
+          {canManage && <Button className="mt-4" onClick={() => setManagingSupplier(supplier)} size="sm" variant="outline">Manage products</Button>}
         </li>
       ))}</ul>
+      {managingSupplier && <SupplierProductManagerDialog onClose={() => setManagingSupplier(null)} supplierId={managingSupplier.id} supplierName={managingSupplier.name} />}
     </section>
   )
 }

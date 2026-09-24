@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
   products: { data: [] as Product[], isLoading: false, isError: false, refetch: vi.fn() },
   suppliers: { data: [] as Supplier[], isLoading: false, isError: false },
+  supplierProducts: { data: [] as Array<{ supplierId: string; productId: string }>, isLoading: false, isError: false },
 }))
 
 vi.mock("@/features/inventory/inventory-queries", () => ({ useInventoryProducts: () => mocks.products }))
 vi.mock("@/features/purchasing/purchasing-queries", () => ({
   usePurchasingSuppliers: () => mocks.suppliers,
+  useSupplierProducts: () => mocks.supplierProducts,
   useRecordPurchase: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
 }))
 
@@ -42,6 +44,7 @@ describe("purchasing receiving page", () => {
     vi.stubGlobal("crypto", { randomUUID: vi.fn(() => `request-${++nextRequest}`) })
     mocks.products = { data: products, isLoading: false, isError: false, refetch: vi.fn() }
     mocks.suppliers = { data: suppliers, isLoading: false, isError: false }
+    mocks.supplierProducts = { data: [], isLoading: false, isError: false }
     mocks.mutateAsync.mockReset()
   })
 
@@ -126,6 +129,15 @@ describe("purchasing receiving page", () => {
     expect(screen.getByRole("list", { name: /items in current receipt/i }).querySelectorAll("li")).toHaveLength(1)
     await user.click(screen.getByRole("button", { name: /remove coffee beans/i }))
     expect(screen.queryByRole("list", { name: /items in current receipt/i })).not.toBeInTheDocument()
+  })
+
+  it("puts linked products first for a supplier while keeping unlinked products available", async () => {
+    const user = userEvent.setup()
+    mocks.supplierProducts = { data: [{ supplierId: "s1", productId: "p4" }], isLoading: false, isError: false }
+    renderPurchasing()
+    await user.selectOptions(screen.getByLabelText("Supplier"), "s1")
+    const productOptions = Array.from(screen.getByLabelText("Product").querySelectorAll("option")).map((option) => option.value)
+    expect(productOptions.slice(1, 3)).toEqual(["p4", "p1"])
   })
 
   it("computes exact totals, does not update catalog cost directly, and blocks overflow", async () => {

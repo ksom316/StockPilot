@@ -12,7 +12,7 @@ import { parseDatabaseQuantity, parseQuantity } from "@/features/inventory/inven
 import { useInventoryProducts } from "@/features/inventory/inventory-queries"
 import { calculatePurchaseLineTotal, calculatePurchaseTotal, formatPurchaseMoney, maximumPurchaseQuantityScaled, parseUnitCost } from "@/features/purchasing/purchasing-money"
 import { calculateBaseUnitCost, convertPurchaseQuantity } from "@/features/purchasing/purchase-conversion"
-import { usePurchasingSuppliers, useRecordPurchase } from "@/features/purchasing/purchasing-queries"
+import { usePurchasingSuppliers, useRecordPurchase, useSupplierProducts } from "@/features/purchasing/purchasing-queries"
 import type { RecordedPurchase } from "@/features/purchasing/purchasing-types"
 
 interface ReceiptLine {
@@ -41,6 +41,7 @@ export function PurchasingPage() {
   const { business } = useBusiness()
   const products = useInventoryProducts()
   const suppliers = usePurchasingSuppliers()
+  const supplierProducts = useSupplierProducts()
   const recordPurchase = useRecordPurchase()
   const [productSearch, setProductSearch] = useState("")
   const [supplierSearch, setSupplierSearch] = useState("")
@@ -61,7 +62,8 @@ export function PurchasingPage() {
 
   const activeProducts = useMemo(() => (products.data ?? []).filter((product) => product.isActive), [products.data])
   const productTerm = productSearch.trim().toLocaleLowerCase()
-  const matchingProducts = activeProducts.filter((product) => !productTerm || product.name.toLocaleLowerCase().includes(productTerm) || Boolean(product.sku?.toLocaleLowerCase().includes(productTerm)))
+  const linkedProductIds = new Set((supplierProducts.data ?? []).filter((link) => link.supplierId === selectedSupplierId).map((link) => link.productId))
+  const matchingProducts = activeProducts.filter((product) => !productTerm || product.name.toLocaleLowerCase().includes(productTerm) || Boolean(product.sku?.toLocaleLowerCase().includes(productTerm))).sort((left, right) => Number(linkedProductIds.has(right.id)) - Number(linkedProductIds.has(left.id)))
   const activeSuppliers = suppliers.data ?? []
   const supplierTerm = supplierSearch.trim().toLocaleLowerCase()
   const matchingSuppliers = activeSuppliers.filter((supplier) => !supplierTerm || supplier.name.toLocaleLowerCase().includes(supplierTerm))
@@ -227,7 +229,7 @@ export function PurchasingPage() {
               <label className="block space-y-1.5"><span className="text-sm font-medium">Supplier <span className="font-normal text-muted-foreground">(optional)</span></span><input autoComplete="off" disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setSupplierSearch(event.target.value)} placeholder="Search suppliers" type="search" value={supplierSearch} /><select aria-label="Supplier" disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => { setSelectedSupplierId(event.target.value); markMaterialChange() }} value={selectedSupplierId}><option value="">No supplier / unspecified</option>{matchingSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select>{suppliers.isError && <p className="text-xs text-muted-foreground" role="status">Supplier list unavailable. You can continue without a supplier.</p>}{!suppliers.isLoading && !suppliers.isError && matchingSuppliers.length === 0 && supplierTerm && <p className="text-xs text-muted-foreground">No active suppliers match that search. You can continue without one.</p>}</label>
 
               <form className="space-y-4" noValidate onSubmit={addItem}>
-                <label className="block space-y-1.5"><span className="text-sm font-medium">Search products</span><input autoComplete="off" disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setProductSearch(event.target.value)} placeholder="Product name or SKU" type="search" value={productSearch} /></label>
+                <label className="block space-y-1.5"><span className="text-sm font-medium">Search products</span><input autoComplete="off" disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setProductSearch(event.target.value)} placeholder="Product name or SKU" type="search" value={productSearch} />{selectedSupplierId && linkedProductIds.size > 0 && <span className="block text-xs text-muted-foreground">Products supplied by the selected supplier appear first. Other active products remain available.</span>}</label>
                 <label className="block space-y-1.5"><span className="text-sm font-medium">Product</span><select aria-describedby={errors.product ? "purchase-product-error" : undefined} aria-invalid={Boolean(errors.product)} disabled={pending} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => selectProduct(event.target.value)} value={selectedProductId}><option value="">Choose a product</option>{matchingProducts.map((product) => <option key={product.id} value={product.id}>{product.name} · SKU {product.sku}</option>)}</select>{errors.product && <p className="text-sm text-destructive" id="purchase-product-error">{errors.product}</p>}{matchingProducts.length === 0 && <p className="text-sm text-muted-foreground">No active products match that search.</p>}</label>
                 {selectedProduct && <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="break-words font-medium">{selectedProduct.name}</span><span className="text-muted-foreground">SKU {selectedProduct.sku}</span></div><p className="mt-1 text-muted-foreground">Current stock: <span className="font-medium text-foreground">{formatQuantity(selectedProduct.currentQuantity)} {selectedProduct.baseUnit}</span> · Latest base cost: <span className="font-medium text-foreground">{formatPurchaseMoney(selectedProduct.costPrice, business?.currency ?? "USD")} / {selectedProduct.baseUnit}</span></p><p className="mt-1 text-muted-foreground">1 {selectedProduct.purchaseUnit} = {formatQuantity(selectedProduct.purchaseConversionQuantity)} {selectedProduct.baseUnit}</p></div>}
                 <div className="grid gap-4 sm:grid-cols-2">

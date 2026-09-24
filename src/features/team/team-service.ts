@@ -14,7 +14,7 @@ const invitationStatuses = new Set(["pending", "accepted", "revoked", "expired"]
 function parseMember(value: unknown): TeamMember {
   const item = record(value, "member"); const role = stringValue(item.role, "member.role"); const status = stringValue(item.status, "member.status")
   if (!roles.has(role as TeamRole) || !memberStatuses.has(status)) throw new TeamDataError("Team returned an invalid member role or status.")
-  return { membershipId: stringValue(item.membershipId, "membershipId"), userId: stringValue(item.userId, "userId"), displayName: stringValue(item.displayName, "displayName"), email: nullableString(item.email, "email"), role: role as TeamRole, status: status as TeamMember["status"], createdAt: stringValue(item.createdAt, "createdAt"), updatedAt: stringValue(item.updatedAt, "updatedAt"), statusChangedAt: nullableString(item.statusChangedAt, "statusChangedAt") }
+  return { membershipId: stringValue(item.membershipId, "membershipId"), userId: stringValue(item.userId, "userId"), displayName: stringValue(item.displayName, "displayName"), avatarPath: item.avatarPath === undefined ? null : nullableString(item.avatarPath, "avatarPath"), email: nullableString(item.email, "email"), role: role as TeamRole, status: status as TeamMember["status"], createdAt: stringValue(item.createdAt, "createdAt"), updatedAt: stringValue(item.updatedAt, "updatedAt"), statusChangedAt: nullableString(item.statusChangedAt, "statusChangedAt") }
 }
 function parseInvitation(value: unknown): TeamInvitation {
   const item = record(value, "invitation"); const role = stringValue(item.role, "invitation.role"); const status = stringValue(item.status, "invitation.status")

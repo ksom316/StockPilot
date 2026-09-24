@@ -12,8 +12,8 @@ describe("ProductFormDialog", () => {
     const onSubmit = vi.fn()
     render(<ProductFormDialog categories={[]} currency="USD" onClose={vi.fn()} onSubmit={onSubmit} />)
     const dialog = screen.getByRole("dialog")
-    await user.clear(within(dialog).getByLabelText(/cost per not specified/i))
-    await user.type(within(dialog).getByLabelText(/cost per not specified/i), "1.12345")
+    await user.clear(within(dialog).getByLabelText(/cost \(USD\)/i))
+    await user.type(within(dialog).getByLabelText(/cost \(USD\)/i), "1.12345")
     await user.click(within(dialog).getByRole("button", { name: /add product/i }))
     expect(within(dialog).getByText("Enter a product name.")).toBeInTheDocument()
     expect(within(dialog).getByLabelText(/sku \(optional\)/i)).toBeInTheDocument()
@@ -61,8 +61,8 @@ describe("ProductFormDialog", () => {
     render(<ProductFormDialog categories={[]} currency="GHS" onClose={vi.fn()} onSubmit={vi.fn()} />)
     const dialog = screen.getByRole("dialog")
     await user.type(within(dialog).getByLabelText(/product name/i), "Chicken Wings")
-    await user.clear(within(dialog).getByLabelText(/cost per not specified/i))
-    await user.type(within(dialog).getByLabelText(/cost per not specified/i), "30")
+    await user.clear(within(dialog).getByLabelText(/cost \(GHS\)/i))
+    await user.type(within(dialog).getByLabelText(/cost \(GHS\)/i), "30")
     await user.selectOptions(within(dialog).getByLabelText(/i sell this product by/i), "kg")
     await user.clear(within(dialog).getByLabelText(/selling price per kg/i))
     await user.type(within(dialog).getByLabelText(/selling price per kg/i), "28")
@@ -140,6 +140,32 @@ describe("ProductFormDialog", () => {
     expect(within(dialog).getAllByLabelText(/^unit name$/i)[1]).toHaveValue("Tray")
     expect(within(dialog).getByLabelText(/i buy this product by/i)).toHaveValue("other")
     expect(within(dialog).getAllByLabelText(/^unit name$/i)[0]).toHaveValue("Bundle")
+  })
+
+  it("keeps legacy units neutral in financial presentation while preserving the stored value", async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<ProductFormDialog categories={[]} currency="GHS" onClose={vi.fn()} onSubmit={onSubmit} />)
+    const dialog = screen.getByRole("dialog")
+
+    expect(within(dialog).getByLabelText(/i sell this product by/i)).toHaveValue("unit")
+    expect(within(dialog).getAllByRole("option", { name: "Not specified" })).toHaveLength(2)
+    expect(within(dialog).getByLabelText(/cost \(GHS\)/i)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText(/selling price \(GHS\)/i)).toBeInTheDocument()
+
+    await user.type(within(dialog).getByLabelText(/product name/i), "Generic goods")
+    await user.clear(within(dialog).getByLabelText(/cost \(GHS\)/i))
+    await user.type(within(dialog).getByLabelText(/cost \(GHS\)/i), "310")
+    await user.clear(within(dialog).getByLabelText(/selling price \(GHS\)/i))
+    await user.type(within(dialog).getByLabelText(/selling price \(GHS\)/i), "360")
+
+    expect(dialog).toHaveTextContent(/Your cost: GHS 310(?:\.00)?/i)
+    expect(dialog).toHaveTextContent(/Cost: GHS 310(?:\.00)?/i)
+    expect(dialog).toHaveTextContent(/Profit: GHS 50(?:\.00)? · Margin:/i)
+    expect(dialog).not.toHaveTextContent(/per not specified|\/ not specified|per unit|\/ unit/i)
+
+    await user.click(within(dialog).getByRole("button", { name: /add product/i }))
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ baseUnit: "unit", purchaseUnit: "unit", costPrice: "310", sellingPrice: "360" }))
   })
 
   it("makes zero-category creation discoverable and preserves the product form", async () => {

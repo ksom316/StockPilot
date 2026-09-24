@@ -1,6 +1,7 @@
 import { act, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { User } from "@supabase/supabase-js"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const supabaseMocks = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn() }))
@@ -35,6 +36,11 @@ function WorkspaceProbe() {
   return <div><output>{business?.name ?? "none"}:{business?.id ?? "none"}</output><span>{businesses.map((item) => `${item.name}:${item.role}`).join(",")}</span><button onClick={() => void switchBusiness("business-b")} type="button">Switch workspace</button></div>
 }
 
+function renderWorkspace(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return { queryClient, ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>) }
+}
+
 function makeBuilder(response: Promise<unknown> | unknown) {
   const builder = {
     select: vi.fn(() => builder),
@@ -59,7 +65,7 @@ describe("BusinessProvider identity boundaries", () => {
       return { select: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: [{ module: "sales" }], error: null })) })) })) }
     })
 
-    const { rerender } = render(
+    const { queryClient, rerender } = renderWorkspace(
       <AuthContext.Provider value={authValue({ id: "user-a" } as User)}>
         <BusinessProvider><Probe /></BusinessProvider>
       </AuthContext.Provider>,
@@ -67,9 +73,11 @@ describe("BusinessProvider identity boundaries", () => {
     expect(await screen.findByText("Private Company A:sales")).toBeInTheDocument()
 
     rerender(
-      <AuthContext.Provider value={authValue({ id: "user-b" } as User)}>
-        <BusinessProvider><Probe /></BusinessProvider>
-      </AuthContext.Provider>,
+      <QueryClientProvider client={queryClient}>
+        <AuthContext.Provider value={authValue({ id: "user-b" } as User)}>
+          <BusinessProvider><Probe /></BusinessProvider>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
     )
     expect(screen.getByText("workspace loading")).toBeInTheDocument()
     expect(screen.queryByText(/Private Company A/)).not.toBeInTheDocument()
@@ -82,7 +90,7 @@ describe("BusinessProvider identity boundaries", () => {
 
   it("shows a recoverable error when workspace initialization rejects", async () => {
     supabaseMocks.from.mockImplementation(() => { throw new Error("network unavailable") })
-    render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><Probe /></BusinessProvider></AuthContext.Provider>)
+    renderWorkspace(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><Probe /></BusinessProvider></AuthContext.Provider>)
     expect(await screen.findByText(/couldn't reach your workspace/i)).toBeInTheDocument()
     expect(screen.queryByText("workspace loading")).not.toBeInTheDocument()
   })
@@ -106,7 +114,7 @@ describe("BusinessProvider identity boundaries", () => {
       }
     })
 
-    render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><ModuleUpdateProbe /></BusinessProvider></AuthContext.Provider>)
+    renderWorkspace(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><ModuleUpdateProbe /></BusinessProvider></AuthContext.Provider>)
     expect(await screen.findByText("Northstar:")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: /enable sales/i }))
     expect(await screen.findByText((_content, element) => element?.tagName === "OUTPUT" && element.textContent === "Northstar:sales")).toBeInTheDocument()
@@ -128,7 +136,7 @@ describe("BusinessProvider identity boundaries", () => {
     })
     supabaseMocks.rpc.mockImplementation((name: string) => name === "create_business_onboarding" ? Promise.resolve({ data: null, error: { code: "23505", message: "An active business membership already exists" } }) : Promise.resolve({ data: false, error: null }))
 
-    render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><OnboardingProbe /></BusinessProvider></AuthContext.Provider>)
+    renderWorkspace(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><OnboardingProbe /></BusinessProvider></AuthContext.Provider>)
     expect(await screen.findByText("no business")).toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: /complete onboarding/i }))
     expect(await screen.findByText("Northstar")).toBeInTheDocument()
@@ -142,7 +150,7 @@ describe("BusinessProvider identity boundaries", () => {
       : { select: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: [], error: null })) })) })) })
     supabaseMocks.rpc.mockResolvedValue({ data: null, error: { code: "23505", message: "Some other unique constraint failed" } })
 
-    render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><OnboardingProbe /></BusinessProvider></AuthContext.Provider>)
+    renderWorkspace(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><OnboardingProbe /></BusinessProvider></AuthContext.Provider>)
     await screen.findByText("no business")
     await userEvent.click(screen.getByRole("button", { name: /complete onboarding/i }))
     await vi.waitFor(() => expect(document.title).toBe("We couldn't finish your business setup. Please try again."))
@@ -159,11 +167,30 @@ describe("BusinessProvider identity boundaries", () => {
       ? makeBuilder({ data: memberships, error: null })
       : { select: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: [{ module: "sales" }], error: null })) })) })) })
 
-    render(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><WorkspaceProbe /></BusinessProvider></AuthContext.Provider>)
+    renderWorkspace(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><WorkspaceProbe /></BusinessProvider></AuthContext.Provider>)
     expect(await screen.findByText("Primary:business-a")).toBeInTheDocument()
     expect(screen.getByText("Primary:owner,Partner:employee")).toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: /switch workspace/i }))
     expect(await screen.findByText("Partner:business-b")).toBeInTheDocument()
     expect(window.localStorage.getItem("stockpilot.active-business")).toBe("business-b")
+  })
+
+  it("evicts cached queries for the previous business when switching", async () => {
+    const memberships = [
+      { id: "membership-a", business_id: "business-a", role: "owner", status: "active", businesses: { id: "business-a", name: "Primary", business_type: "Retail", currency: "USD" } },
+      { id: "membership-b", business_id: "business-b", role: "employee", status: "active", businesses: { id: "business-b", name: "Partner", business_type: "Wholesale", currency: "USD" } },
+    ]
+    supabaseMocks.from.mockImplementation((table: string) => table === "business_members"
+      ? makeBuilder({ data: memberships, error: null })
+      : { select: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: [], error: null })) })) })) })
+
+    const { queryClient } = renderWorkspace(<AuthContext.Provider value={authValue({ id: "user-a" } as User)}><BusinessProvider><WorkspaceProbe /></BusinessProvider></AuthContext.Provider>)
+    await screen.findByText("Primary:business-a")
+    queryClient.setQueryData(["inventory", "business-a", "products"], { name: "Private product" })
+    queryClient.setQueryData(["inventory", "business-b", "products"], { name: "Partner product" })
+    await userEvent.click(screen.getByRole("button", { name: /switch workspace/i }))
+    await screen.findByText("Partner:business-b")
+    expect(queryClient.getQueryData(["inventory", "business-a", "products"])).toBeUndefined()
+    expect(queryClient.getQueryData(["inventory", "business-b", "products"])).toEqual({ name: "Partner product" })
   })
 })

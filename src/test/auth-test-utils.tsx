@@ -47,6 +47,7 @@ export const testBusiness = {
   currency: "USD" as const,
   timezone: "UTC",
   iconId: "store" as const,
+  logoPath: null,
 }
 
 export const testMembership = {
@@ -73,6 +74,8 @@ export function createBusinessValue(overrides: Partial<BusinessContextValue> = {
     createBusiness: vi.fn(),
     setModuleEnabled: vi.fn(),
     setBusinessIcon: vi.fn(),
+    setBusinessLogo: vi.fn(),
+    removeBusinessLogo: vi.fn(),
     setBusinessCurrency: vi.fn(),
     ...overrides,
   }

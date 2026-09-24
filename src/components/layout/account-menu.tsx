@@ -2,6 +2,7 @@ import { LogOut, Settings2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 
+import { ProfileAvatar } from "@/components/branding/profile-avatar"
 import { cn } from "@/lib/utils"
 import { ProfileAvatarIcon, profileAvatarOptions, type ProfileAvatarId } from "@/features/profile/profile-icons"
 
@@ -10,14 +11,21 @@ interface AccountMenuProps {
   onSignOut: () => void
   isSigningOut: boolean
   avatarId: ProfileAvatarId
+  avatarPath: string | null
+  avatarLabel: string
+  profileError: string
   isUpdatingAvatar: boolean
   onAvatarChange: (avatarId: ProfileAvatarId) => void
+  onAvatarUpload: (file: File) => Promise<void>
+  onAvatarRemove: () => Promise<void>
 }
 
 /** Compact account menu housing settings access and sign-out, used in the top header. */
-export function AccountMenu({ label, onSignOut, isSigningOut, avatarId, isUpdatingAvatar, onAvatarChange }: AccountMenuProps) {
+export function AccountMenu({ label, avatarId, avatarPath, avatarLabel, isSigningOut, isUpdatingAvatar, profileError, onAvatarChange, onAvatarUpload, onAvatarRemove, onSignOut }: AccountMenuProps) {
   const [open, setOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -35,6 +43,22 @@ export function AccountMenu({ label, onSignOut, isSigningOut, avatarId, isUpdati
     }
   }, [open])
 
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
+
+  const choosePhoto = async (file: File) => {
+    const nextPreview = URL.createObjectURL(file)
+    setPreviewUrl(nextPreview)
+    try {
+      await onAvatarUpload(file)
+    } catch {
+      // The hook exposes the safe error state; restore the persisted image on failure.
+    } finally {
+      URL.revokeObjectURL(nextPreview)
+      setPreviewUrl(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <button
@@ -48,7 +72,7 @@ export function AccountMenu({ label, onSignOut, isSigningOut, avatarId, isUpdati
         onClick={() => setOpen((value) => !value)}
         type="button"
       >
-        <ProfileAvatarIcon className="size-4" id={avatarId} />
+        <ProfileAvatar avatarId={avatarId} className="size-7 text-[10px]" label={avatarLabel} path={avatarPath} />
       </button>
       {open && (
         <div
@@ -57,7 +81,20 @@ export function AccountMenu({ label, onSignOut, isSigningOut, avatarId, isUpdati
         >
           <p className="truncate px-2.5 py-1.5 text-xs text-muted-foreground" title={label}>{label}</p>
           <div className="border-b border-border px-2.5 pb-2 pt-1">
-            <p className="mb-1.5 text-xs font-medium text-foreground">Profile icon</p>
+            <div className="flex items-center gap-2">
+              <ProfileAvatar avatarId={avatarId} className="size-10" label={avatarLabel} path={avatarPath} src={previewUrl} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-foreground">Profile photo</p>
+                <p className="text-[11px] text-muted-foreground">JPEG, PNG, or WebP up to 5 MB</p>
+              </div>
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button className="rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50" disabled={isUpdatingAvatar} onClick={() => fileInputRef.current?.click()} type="button">{isUpdatingAvatar ? "Saving…" : avatarPath ? "Change photo" : "Upload photo"}</button>
+              {avatarPath && <button className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50" disabled={isUpdatingAvatar} onClick={() => void onAvatarRemove()} type="button">Remove</button>}
+              <input accept="image/jpeg,image/png,image/webp" className="sr-only" ref={fileInputRef} onChange={(event) => { const file = event.target.files?.[0]; if (file) void choosePhoto(file) }} type="file" />
+            </div>
+            {profileError && <p className="mt-2 text-xs text-destructive" role="alert">{profileError}</p>}
+            <p className="mb-1.5 mt-3 text-xs font-medium text-foreground">Profile fallback icon</p>
             <div className="flex gap-1" role="group" aria-label="Profile icon choices">
               {profileAvatarOptions.map((option) => (
                 <button
