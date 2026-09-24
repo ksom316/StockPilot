@@ -5,6 +5,8 @@ import { DialogShell } from "@/components/ui/dialog-shell"
 import { FormField } from "@/components/ui/form-field"
 import { formatQuantity } from "@/features/inventory/inventory-format"
 import { InventoryDataError } from "@/features/inventory/inventory-service"
+import { calculateBaseUnitCost } from "@/features/purchasing/purchase-conversion"
+import { calculatePurchaseLineTotal, formatPurchaseMoney } from "@/features/purchasing/purchasing-money"
 import type { Category, CategoryInput, Product, ProductInput, SellingUnitInput } from "@/features/inventory/inventory-types"
 
 interface ProductFormDialogProps {
@@ -31,13 +33,30 @@ interface Errors {
 const moneyPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,4})?$/
 const quantityPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,3})?$/
 
+function formatPreviewAmount(value: bigint) {
+  const sign = value < 0n ? "-" : ""
+  const absolute = value < 0n ? -value : value
+  const whole = absolute / 10_000n
+  const fraction = String(absolute % 10_000n).padStart(4, "0").replace(/0+$/, "")
+  return `${sign}${whole}${fraction ? `.${fraction}` : ""}`
+}
+
+function PricePreview({ cost, currency, price, unit }: { cost: string; currency: string; price: string; unit: string }) {
+  const parsedCost = moneyPattern.exec(cost.trim()) ? BigInt(cost.split(".")[0]) * 10_000n + BigInt((cost.split(".")[1] ?? "").padEnd(4, "0")) : null
+  const parsedPrice = moneyPattern.exec(price.trim()) ? BigInt(price.split(".")[0]) * 10_000n + BigInt((price.split(".")[1] ?? "").padEnd(4, "0")) : null
+  if (parsedCost === null || parsedPrice === null) return null
+  const profit = parsedPrice - parsedCost
+  const margin = parsedPrice === 0n ? null : Number(profit) / Number(parsedPrice) * 100
+  return <div className="mt-2 space-y-1 text-xs text-muted-foreground"><p>Cost: {formatPurchaseMoney(formatPreviewAmount(parsedCost), currency)} / {unit}</p><p>Profit: {formatPurchaseMoney(formatPreviewAmount(profit), currency)} per {unit}{margin !== null && <span> · Margin: {margin.toFixed(1)}%</span>}</p>{profit < 0n && <p className="text-amber-700 dark:text-amber-300" role="status">This price is below your cost of {formatPurchaseMoney(formatPreviewAmount(parsedCost), currency)} per {unit}.</p>}</div>
+}
+
 export function ProductFormDialog({ product, categories: initialCategories, currency, onClose, onSubmit, onCreateCategory }: ProductFormDialogProps) {
   const [categories, setCategories] = useState(initialCategories)
   const [name, setName] = useState(product?.name ?? "")
   const [sku, setSku] = useState(product?.sku ?? "")
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? "")
   const [description, setDescription] = useState(product?.description ?? "")
-  const [costPrice, setCostPrice] = useState(product?.costPrice ?? "0")
+  const [purchaseCost, setPurchaseCost] = useState(product ? calculatePurchaseLineTotal(product.purchaseConversionQuantity, product.costPrice) ?? product.costPrice : "0")
   const [sellingPrice, setSellingPrice] = useState(product?.sellingPrice ?? "0")
   const [baseUnit, setBaseUnit] = useState(product?.baseUnit ?? "unit")
   const [purchaseUnit, setPurchaseUnit] = useState(product?.purchaseUnit ?? "unit")
@@ -52,13 +71,15 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
   const [isSavingCategory, setIsSavingCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
   const [categoryError, setCategoryError] = useState("")
+  const normalizedConversionForPreview = purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim()
+  const baseCostPreview = calculateBaseUnitCost(purchaseCost.trim(), normalizedConversionForPreview)
 
   const validate = () => {
     const next: Errors = {}
     if (!name.trim()) next.name = "Enter a product name."
     else if (name.trim().length > 200) next.name = "Product name must be 200 characters or fewer."
     if (sku.trim().length > 100) next.sku = "SKU must be 100 characters or fewer."
-    if (!moneyPattern.test(costPrice.trim())) next.costPrice = `Enter a valid ${currency} amount with up to 4 decimal places.`
+    if (!moneyPattern.test(purchaseCost.trim())) next.costPrice = `Enter what one ${purchaseUnit.trim() || "purchase unit"} costs in ${currency}.`
     if (!moneyPattern.test(sellingPrice.trim())) next.sellingPrice = `Enter a valid ${currency} amount with up to 4 decimal places.`
     if (!quantityPattern.test(lowStockThreshold.trim())) next.lowStockThreshold = "Enter a non-negative quantity with up to 3 decimal places."
     if (!baseUnit.trim()) next.baseUnit = "Enter a selling unit."
@@ -66,7 +87,9 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
     if (!purchaseUnit.trim()) next.purchaseUnit = "Enter a purchase unit."
     else if (purchaseUnit.trim().length > 40) next.purchaseUnit = "Purchase unit must be 40 characters or fewer."
     const normalizedConversion = purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim()
-    if (!quantityPattern.test(normalizedConversion) || normalizedConversion === "0" || /^0\.0*$/.test(normalizedConversion)) next.purchaseConversionQuantity = "Enter a conversion quantity greater than zero with up to 3 decimal places."
+    if (!quantityPattern.test(normalizedConversion) || normalizedConversion === "0" || /^0\.0*$/.test(normalizedConversion)) next.purchaseConversionQuantity = `Enter how many ${baseUnit.trim() || "selling units"} are in one ${purchaseUnit.trim() || "purchase unit"}.`
+    const derivedCost = calculateBaseUnitCost(purchaseCost.trim(), normalizedConversion)
+    if (moneyPattern.test(purchaseCost.trim()) && !derivedCost) next.costPrice = `This purchase cost cannot be converted safely to a ${baseUnit.trim() || "selling unit"} cost.`
     const seenUnits = new Set<string>()
     sellingUnits.forEach((sellingUnit) => {
       const normalizedUnit = sellingUnit.unit.trim().toLocaleLowerCase()
@@ -88,12 +111,14 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
 
     setIsSubmitting(true)
     try {
+      const normalizedConversion = purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim()
+      const derivedCost = calculateBaseUnitCost(purchaseCost.trim(), normalizedConversion)
       await onSubmit({
         name: name.trim(),
         sku: sku.trim() || null,
         categoryId: categoryId || null,
         description: description.trim() || null,
-        costPrice: costPrice.trim(),
+        costPrice: derivedCost ?? purchaseCost.trim(),
         sellingPrice: sellingPrice.trim(),
         baseUnit: baseUnit.trim(),
         purchaseUnit: purchaseUnit.trim(),
@@ -143,18 +168,18 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
           {onCreateCategory && <div className="mt-2 rounded-md border border-dashed border-border p-3 text-sm"><p className="text-muted-foreground">{categories.length === 0 ? "No categories yet. Create categories to organize your products." : "Need another category?"}</p>{!isCreatingCategory && <button className="mt-1 font-medium text-primary underline-offset-2 hover:underline" disabled={isSubmitting} onClick={() => setIsCreatingCategory(true)} type="button">Create category</button>}{isCreatingCategory && <div className="mt-2 flex flex-col gap-2 sm:flex-row"><input aria-label="New category name" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm" disabled={isSavingCategory} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Category name" value={newCategoryName} /><Button disabled={isSavingCategory} onClick={() => void createInlineCategory()} size="sm" type="button">Create</Button></div>}{categoryError && <p className="mt-1 text-sm text-destructive" role="alert">{categoryError}</p>}</div>}
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          <FormField disabled={isSubmitting} error={errors.costPrice} id="cost-price" inputMode="decimal" label={`Cost per selling unit (${currency})`} onChange={(event) => setCostPrice(event.target.value)} value={costPrice} />
+          <FormField disabled={isSubmitting} error={errors.costPrice} id="purchase-cost" inputMode="decimal" label={`Cost per ${purchaseUnit.trim() || "purchase unit"} (${currency})`} onChange={(event) => setPurchaseCost(event.target.value)} value={purchaseCost} />
           <FormField disabled={isSubmitting} error={errors.sellingPrice} id="selling-price" inputMode="decimal" label={`Selling price per unit (${currency})`} onChange={(event) => setSellingPrice(event.target.value)} value={sellingPrice} />
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <FormField disabled={isSubmitting} error={errors.baseUnit} id="base-unit" label="Selling unit" maxLength={40} onChange={(event) => setBaseUnit(event.target.value)} placeholder="kg, piece, pack, carton" value={baseUnit} />
           <FormField disabled={isSubmitting} error={errors.purchaseUnit} id="purchase-unit" label="Purchase unit" maxLength={40} onChange={(event) => setPurchaseUnit(event.target.value)} placeholder="carton" value={purchaseUnit} />
         </div>
-        <FormField disabled={isSubmitting || purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase()} error={errors.purchaseConversionQuantity} id="purchase-conversion-quantity" inputMode="decimal" label={`1 ${purchaseUnit.trim() || "purchase unit"} contains`} onChange={(event) => setPurchaseConversionQuantity(event.target.value)} value={purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity} />
-        {baseUnit.trim() && purchaseUnit.trim() && <p className="-mt-3 text-sm text-muted-foreground">1 {purchaseUnit.trim()} = {purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity || "?"} {baseUnit.trim()}</p>}
+        {purchaseUnit.trim().toLocaleLowerCase() !== baseUnit.trim().toLocaleLowerCase() && <><FormField disabled={isSubmitting} error={errors.purchaseConversionQuantity} id="purchase-conversion-quantity" inputMode="decimal" label={`How many ${baseUnit.trim() || "selling units"} are in one ${purchaseUnit.trim() || "purchase unit"}?`} onChange={(event) => setPurchaseConversionQuantity(event.target.value)} value={purchaseConversionQuantity} />{baseUnit.trim() && purchaseUnit.trim() && <p className="-mt-3 text-sm text-muted-foreground">1 {purchaseUnit.trim()} contains {purchaseConversionQuantity || "?"} {baseUnit.trim()}</p>}</>}
+        {baseCostPreview && <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm"><p>Your cost: <strong>{formatPurchaseMoney(baseCostPreview, currency)} per {baseUnit.trim() || "selling unit"}</strong></p><PricePreview cost={baseCostPreview} currency={currency} price={sellingPrice} unit={baseUnit.trim() || "selling unit"} /></div>}
         <section aria-labelledby="additional-selling-units-heading" className="space-y-3 rounded-lg border border-border p-4">
           <div><h3 className="font-medium" id="additional-selling-units-heading">Additional selling options</h3><p className="mt-1 text-sm text-muted-foreground">Keep the base option above, or add options such as a carton or pack with their own selling price.</p></div>
-          {sellingUnits.map((sellingUnit, index) => <div className="rounded-md border border-border bg-muted/20 p-3" key={index}><div className="grid gap-4 sm:grid-cols-3"><FormField disabled={isSubmitting} id={`selling-unit-${index}`} label="Selling unit" maxLength={40} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: event.target.value } : item))} placeholder="carton" value={sellingUnit.unit} /><FormField disabled={isSubmitting} id={`selling-unit-conversion-${index}`} inputMode="decimal" label={`1 ${sellingUnit.unit.trim() || "unit"} contains`} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, conversionQuantity: event.target.value } : item))} value={sellingUnit.conversionQuantity} /><FormField disabled={isSubmitting} id={`selling-unit-price-${index}`} inputMode="decimal" label={`Selling price (${currency})`} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, sellingPrice: event.target.value } : item))} value={sellingUnit.sellingPrice} /></div><p className="mt-2 text-sm text-muted-foreground">{sellingUnit.unit.trim() && baseUnit.trim() ? `1 ${sellingUnit.unit.trim()} = ${sellingUnit.conversionQuantity || "?"} ${baseUnit.trim()}` : "Enter the unit relationship."}</p><Button disabled={isSubmitting} onClick={() => setSellingUnits((current) => current.filter((_, itemIndex) => itemIndex !== index))} size="sm" type="button" variant="outline">Remove</Button></div>)}
+          {sellingUnits.map((sellingUnit, index) => <div className="rounded-md border border-border bg-muted/20 p-3" key={index}><div className="grid gap-4 sm:grid-cols-3"><FormField disabled={isSubmitting} id={`selling-unit-${index}`} label="Selling unit" maxLength={40} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: event.target.value } : item))} placeholder="carton" value={sellingUnit.unit} /><FormField disabled={isSubmitting} id={`selling-unit-conversion-${index}`} inputMode="decimal" label={`1 ${sellingUnit.unit.trim() || "unit"} contains`} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, conversionQuantity: event.target.value } : item))} value={sellingUnit.conversionQuantity} /><FormField disabled={isSubmitting} id={`selling-unit-price-${index}`} inputMode="decimal" label={`Selling price (${currency})`} onChange={(event) => setSellingUnits((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, sellingPrice: event.target.value } : item))} value={sellingUnit.sellingPrice} /></div><p className="mt-2 text-sm text-muted-foreground">{sellingUnit.unit.trim() && baseUnit.trim() ? `1 ${sellingUnit.unit.trim()} contains ${sellingUnit.conversionQuantity || "?"} ${baseUnit.trim()}` : "Enter the unit relationship."}</p>{baseCostPreview && <PricePreview cost={calculatePurchaseLineTotal(sellingUnit.conversionQuantity, baseCostPreview) ?? baseCostPreview} currency={currency} price={sellingUnit.sellingPrice} unit={sellingUnit.unit.trim() || "selling unit"} />}<Button disabled={isSubmitting} onClick={() => setSellingUnits((current) => current.filter((_, itemIndex) => itemIndex !== index))} size="sm" type="button" variant="outline">Remove</Button></div>)}
           <Button disabled={isSubmitting} onClick={() => setSellingUnits((current) => [...current, { unit: "", conversionQuantity: "1", sellingPrice: sellingPrice }])} type="button" variant="outline">Add selling unit</Button>
           {errors.sellingUnits && <p className="text-sm text-destructive" role="alert">{errors.sellingUnits}</p>}
         </section>
