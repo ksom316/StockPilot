@@ -4,16 +4,23 @@ export interface SaleItemInput {
   unit_price: string
 }
 
+export type SalesChannel = "walk_in" | "pickup" | "delivery" | "other"
+export type PaymentMethod = "cash" | "mobile_money" | "card" | "bank_transfer"
+
 export interface RecordSaleInput {
   items: SaleItemInput[]
   notes: string | null
   customerId?: string | null
+  salesChannel?: SalesChannel
+  paymentMethod?: PaymentMethod
 }
 
 export interface RecordedSale {
   id: string
   sale_reference: string
   customerId?: string | null
+  salesChannel?: SalesChannel
+  paymentMethod?: PaymentMethod
 }
 
 export interface SaleSummary {
@@ -26,6 +33,10 @@ export interface SaleSummary {
   total: string
   notes: string | null
   createdBy: string
+  recordedByName?: string | null
+  recordedByRole?: "owner" | "manager" | "employee" | "cashier" | null
+  salesChannel?: SalesChannel
+  paymentMethod?: PaymentMethod
   itemCount: number
   items: Pick<SaleItem, "productName" | "productSku">[]
 }

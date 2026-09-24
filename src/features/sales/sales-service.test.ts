@@ -57,7 +57,7 @@ describe("sales service", () => {
   it("passes a selected customer ID through the existing atomic RPC", async () => {
     query.rpc.mockResolvedValue({ data: { id: "sale-1", sale_reference: "SALE-000001", customer_id: "customer-1" }, error: null })
     await expect(recordSale({ items: [{ product_id: "product-1", quantity: "1", unit_price: "2" }], notes: null, customerId: "customer-1" })).resolves.toEqual({ id: "sale-1", sale_reference: "SALE-000001", customerId: "customer-1" })
-    expect(query.rpc).toHaveBeenCalledWith("record_sale", { p_items: [{ product_id: "product-1", quantity: "1", unit_price: "2" }], p_notes: null, p_customer_id: "customer-1" })
+    expect(query.rpc).toHaveBeenCalledWith("record_sale", { p_items: [{ product_id: "product-1", quantity: "1", unit_price: "2" }], p_notes: null, p_customer_id: "customer-1", p_sales_channel: "walk_in", p_payment_method: "cash" })
   })
 
   it("maps customer validation rejection without silently retrying as Walk-in", async () => {

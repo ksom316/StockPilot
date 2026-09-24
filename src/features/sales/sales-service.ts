@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase"
 import { SalesDataError, type RecordedSale, type RecordSaleInput, type SaleDetail, type SaleItem, type SaleSummary } from "@/features/sales/sales-types"
 
-const saleSelect = "id,business_id,sale_reference,customer_name_snapshot,sold_at,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,sale_items(id,product_id,product_name,product_sku,quantity_text:quantity::text,unit_price_text:unit_price::text,line_total_text:line_total::text)"
+const saleSelect = "id,business_id,sale_reference,customer_name_snapshot,sales_channel,payment_method,recorded_by_name_snapshot,recorded_by_role_snapshot,sold_at,subtotal_text:subtotal::text,total_text:total::text,notes,created_by,sale_items(id,product_id,product_name,product_sku,quantity_text:quantity::text,unit_price_text:unit_price::text,line_total_text:line_total::text)"
 
 export async function recordSale(input: RecordSaleInput): Promise<RecordedSale> {
   if (!supabase) throw new SalesDataError("Sales is not configured. Refresh and try again.")
@@ -10,6 +10,8 @@ export async function recordSale(input: RecordSaleInput): Promise<RecordedSale> 
     p_items: input.items,
     p_notes: input.notes,
     p_customer_id: input.customerId ?? null,
+    p_sales_channel: input.salesChannel ?? "walk_in",
+    p_payment_method: input.paymentMethod ?? "cash",
   })
 
   if (error) {
@@ -50,6 +52,10 @@ export async function fetchSales(businessId: string): Promise<SaleSummary[]> {
       total: row.total_text,
       notes: row.notes,
       createdBy: row.created_by,
+      recordedByName: row.recorded_by_name_snapshot,
+      recordedByRole: row.recorded_by_role_snapshot,
+      salesChannel: row.sales_channel,
+      paymentMethod: row.payment_method,
       itemCount: items.length,
       items: items.map(({ productName, productSku }) => ({ productName, productSku })),
     }
@@ -78,6 +84,10 @@ export async function fetchSale(businessId: string, saleId: string): Promise<Sal
     total: data.total_text,
     notes: data.notes,
     createdBy: data.created_by,
+    recordedByName: data.recorded_by_name_snapshot,
+    recordedByRole: data.recorded_by_role_snapshot,
+    salesChannel: data.sales_channel,
+    paymentMethod: data.payment_method,
     items,
   }
 }

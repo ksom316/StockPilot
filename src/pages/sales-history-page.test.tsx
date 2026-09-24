@@ -15,8 +15,8 @@ vi.mock("@/features/sales/sales-queries", () => ({
 }))
 
 const history: SaleSummary[] = [
-  { id: "sale-1", businessId: "business-1", saleReference: "SALE-000001", customerNameSnapshot: "Avery Example", soldAt: "2026-09-20T12:00:00Z", subtotal: "106.5122", total: "106.5122", notes: "Counter order", createdBy: "user-1", itemCount: 1, items: [{ productName: "Phone Case", productSku: "CASE-01" }] },
-  { id: "sale-2", businessId: "business-1", saleReference: "SALE-000002", customerNameSnapshot: null, soldAt: "2026-09-21T12:00:00Z", subtotal: "25", total: "25", notes: null, createdBy: "user-2", itemCount: 1, items: [{ productName: "Tea", productSku: "TEA-2" }] },
+  { id: "sale-1", businessId: "business-1", saleReference: "SALE-000001", customerNameSnapshot: "Avery Example", soldAt: "2026-09-20T12:00:00Z", subtotal: "106.5122", total: "106.5122", notes: "Counter order", createdBy: "user-1", recordedByName: "Kwaku", recordedByRole: "owner", itemCount: 1, items: [{ productName: "Phone Case", productSku: "CASE-01" }] },
+  { id: "sale-2", businessId: "business-1", saleReference: "SALE-000002", customerNameSnapshot: null, soldAt: "2026-09-21T12:00:00Z", subtotal: "25", total: "25", notes: null, createdBy: "user-2", recordedByName: null, recordedByRole: null, itemCount: 1, items: [{ productName: "Tea", productSku: "TEA-2" }] },
 ]
 
 const detail: SaleDetail = { ...history[0], items: [{ id: "line-1", productId: "product-1", productName: "Phone Case", productSku: "CASE-01", quantity: "2.125", unitPrice: "50.1234", lineTotal: "106.5122" }] }
@@ -42,9 +42,9 @@ describe("sales history and details", () => {
     expect(screen.getAllByText("SALE-000001").length).toBeGreaterThan(0)
     expect(screen.getAllByText(/2026/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/106\.51/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Team member").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Kwaku · Owner").length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Customer: Avery Example/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Customer: Walk-in/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Customer: Anonymous/i).length).toBeGreaterThan(0)
     expect(screen.queryByText(/555-0100|avery@example/i)).not.toBeInTheDocument()
   })
 

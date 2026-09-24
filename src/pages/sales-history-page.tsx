@@ -22,13 +22,15 @@ function formatSaleDate(value: string) {
   return Number.isNaN(date.getTime()) ? "Date unavailable" : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date)
 }
 
+function labelRecorder(name: string | null | undefined, role: string | null | undefined) { return name ? name + (role ? " \u00b7 " + role[0].toUpperCase() + role.slice(1) : "") : "Unknown team member" }
+
 function SaleRow({ sale, currency }: { sale: SaleSummary; currency: string }) {
   return (
     <TableRow className="hover:bg-muted/30">
-      <Td><Link className="font-medium text-primary hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to={`/sales/${sale.id}`}>{sale.saleReference}</Link><div className="mt-1 text-xs text-muted-foreground">Customer: {sale.customerNameSnapshot ?? "Walk-in"}</div><div className="mt-1 max-w-xs break-words text-xs text-muted-foreground">{sale.notes ? `Note: ${sale.notes}` : "No note"}</div></Td>
+      <Td><Link className="font-medium text-primary hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to={`/sales/${sale.id}`}>{sale.saleReference}</Link><div className="mt-1 text-xs text-muted-foreground">Customer: {sale.customerNameSnapshot ?? "Anonymous"}</div><div className="mt-1 max-w-xs break-words text-xs text-muted-foreground">{sale.notes ? `Note: ${sale.notes}` : "No note"}</div></Td>
       <Td>{formatSaleDate(sale.soldAt)}</Td>
       <Td>{sale.itemCount}</Td>
-      <Td>Team member</Td>
+      <Td>{labelRecorder(sale.recordedByName, sale.recordedByRole)}</Td>
       <Td align="right" className="font-medium tabular-nums">{formatSaleMoney(sale.total, currency)}</Td>
       <Td align="right"><Button asChild size="sm" variant="outline"><Link aria-label={`View sale ${sale.saleReference}`} to={`/sales/${sale.id}`}>View</Link></Button></Td>
     </TableRow>
@@ -57,7 +59,7 @@ export function SalesHistoryPage() {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     return (history.data ?? []).filter((sale) => {
       const saleDate = sale.soldAt.slice(0, 10)
-      const matchesSearch = !normalizedSearch || sale.saleReference.toLocaleLowerCase().includes(normalizedSearch) || (sale.customerNameSnapshot ?? "Walk-in").toLocaleLowerCase().includes(normalizedSearch) || sale.items.some((item) => item.productName.toLocaleLowerCase().includes(normalizedSearch) || item.productSku.toLocaleLowerCase().includes(normalizedSearch))
+      const matchesSearch = !normalizedSearch || sale.saleReference.toLocaleLowerCase().includes(normalizedSearch) || (sale.customerNameSnapshot ?? "Anonymous").toLocaleLowerCase().includes(normalizedSearch) || sale.items.some((item) => item.productName.toLocaleLowerCase().includes(normalizedSearch) || item.productSku.toLocaleLowerCase().includes(normalizedSearch))
       return matchesSearch && (!from || saleDate >= from) && (!to || saleDate <= to)
     })
   }, [from, history.data, search, to])
@@ -76,7 +78,7 @@ export function SalesHistoryPage() {
       </div>
       {reversedRange && <p className="text-sm text-muted-foreground" role="status">The date range was invalid, so date filters were cleared.</p>}
 
-      {history.isLoading && <LoadingState className="rounded-lg border border-border bg-card p-8 text-center" label="Loading sales history…" />}
+      {history.isLoading && <LoadingState className="rounded-lg border border-border bg-card p-8 text-center" label="Loading sales historyÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦" />}
       {history.isError && !history.isLoading && <ErrorState onRetry={() => void history.refetch()} title="Sales history unavailable">We couldn't load sales history. Please try again.</ErrorState>}
       {!history.isLoading && !history.isError && history.data?.length === 0 && <EmptyState action={<Button asChild><Link to="/sales">Record a sale</Link></Button>} description="Completed sales will appear here." title="No sales yet" />}
       {!history.isLoading && !history.isError && history.data && history.data.length > 0 && filteredSales.length === 0 && <EmptyState action={<Button onClick={clearFilters} variant="outline">Clear filters</Button>} description="Try changing or clearing your filters." title="No matching sales" />}
@@ -90,7 +92,7 @@ export function SalesHistoryPage() {
               <TableBody>{filteredSales.map((sale) => <SaleRow currency={business.currency} key={sale.id} sale={sale} />)}</TableBody>
             </Table>
           </TableContainer>
-          <ul aria-label="Sales history" className="space-y-3 md:hidden">{filteredSales.map((sale) => <li className="rounded-lg border border-border bg-card p-4" key={sale.id}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><Link className="break-all font-semibold text-primary hover:underline" to={`/sales/${sale.id}`}>{sale.saleReference}</Link><p className="mt-1 text-sm text-muted-foreground">{formatSaleDate(sale.soldAt)}</p></div><span className="shrink-0 font-semibold tabular-nums">{formatSaleMoney(sale.total, business.currency)}</span></div><div className="mt-3 text-sm"><span className="font-medium">Customer:</span> {sale.customerNameSnapshot ?? "Walk-in"}</div><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"><span>{sale.itemCount} {sale.itemCount === 1 ? "item" : "items"}</span><span>Team member</span>{sale.notes && <span className="max-w-full break-words">Note: {sale.notes}</span>}</div><Button asChild className="mt-4 w-full" size="sm" variant="outline"><Link aria-label={`View sale ${sale.saleReference}`} to={`/sales/${sale.id}`}>View sale</Link></Button></li>)}</ul>
+          <ul aria-label="Sales history" className="space-y-3 md:hidden">{filteredSales.map((sale) => <li className="rounded-lg border border-border bg-card p-4" key={sale.id}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><Link className="break-all font-semibold text-primary hover:underline" to={`/sales/${sale.id}`}>{sale.saleReference}</Link><p className="mt-1 text-sm text-muted-foreground">{formatSaleDate(sale.soldAt)}</p></div><span className="shrink-0 font-semibold tabular-nums">{formatSaleMoney(sale.total, business.currency)}</span></div><div className="mt-3 text-sm"><span className="font-medium">Customer:</span> {sale.customerNameSnapshot ?? "Anonymous"}</div><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"><span>{sale.itemCount} {sale.itemCount === 1 ? "item" : "items"}</span><span>{labelRecorder(sale.recordedByName, sale.recordedByRole)}</span>{sale.notes && <span className="max-w-full break-words">Note: {sale.notes}</span>}</div><Button asChild className="mt-4 w-full" size="sm" variant="outline"><Link aria-label={`View sale ${sale.saleReference}`} to={`/sales/${sale.id}`}>View sale</Link></Button></li>)}</ul>
         </>
       )}
     </section>

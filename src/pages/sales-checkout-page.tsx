@@ -16,7 +16,7 @@ import { parseDatabaseQuantity, parseQuantity } from "@/features/inventory/inven
 import { useInventoryProducts } from "@/features/inventory/inventory-queries"
 import { calculateSaleLineTotal, calculateSaleTotal, formatSaleMoney, parseSalePrice } from "@/features/sales/sales-money"
 import { useRecordSale } from "@/features/sales/sales-queries"
-import type { RecordedSale } from "@/features/sales/sales-types"
+import type { PaymentMethod, RecordedSale, SalesChannel } from "@/features/sales/sales-types"
 
 interface CartLine {
   productId: string
@@ -50,6 +50,8 @@ export function SalesCheckoutPage() {
   const [statusMessage, setStatusMessage] = useState("")
   const [success, setSuccess] = useState<RecordedSale | null>(null)
   const [customerId, setCustomerId] = useState("")
+  const [salesChannel, setSalesChannel] = useState<SalesChannel>("walk_in")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash")
   const [quickCreatedCustomer, setQuickCreatedCustomer] = useState<BasicCustomer | null>(null)
   const [customerSearch, setCustomerSearch] = useState("")
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
@@ -87,11 +89,16 @@ export function SalesCheckoutPage() {
   const selectedProduct = activeProducts.find((product) => product.id === selectedProductId)
   const total = calculateSaleTotal(cart)
   const lineCount = cart.length
+  const editingLine = cart.find((line) => line.productId === selectedProductId) ?? null
 
   const selectProduct = (productId: string, preservePrice = false) => {
     setSelectedProductId(productId)
     setErrors((current) => ({ ...current, product: undefined }))
-    if (!preservePrice) {
+    const existing = cart.find((line) => line.productId === productId)
+    if (existing) {
+      setQuantity(existing.quantity)
+      setUnitPrice(existing.unitPrice)
+    } else if (!preservePrice) {
       const product = activeProducts.find((item) => item.id === productId)
       setUnitPrice(product?.sellingPrice ?? "")
     }
@@ -152,7 +159,19 @@ export function SalesCheckoutPage() {
   const removeLine = (productId: string) => {
     setCart((current) => current.filter((line) => line.productId !== productId))
     setFormError("")
-    if (selectedProductId === productId) setSelectedProductId("")
+    if (selectedProductId === productId) {
+      setSelectedProductId("")
+      setQuantity("1")
+      setUnitPrice("")
+    }
+  }
+
+  const cancelEditing = () => {
+    setSelectedProductId("")
+    setQuantity("1")
+    setUnitPrice("")
+    setErrors({})
+    setFormError("")
   }
 
   const submitSale = async () => {
@@ -189,6 +208,8 @@ export function SalesCheckoutPage() {
         items: cart.map((line) => ({ product_id: line.productId, quantity: line.quantity, unit_price: line.unitPrice })),
         notes: notes.trim() || null,
         customerId: customersEnabled ? customerId || null : null,
+        salesChannel,
+        paymentMethod,
       })
       setSuccess(recorded)
       setCart([])
@@ -197,6 +218,8 @@ export function SalesCheckoutPage() {
       setQuantity("1")
       setUnitPrice("")
       setCustomerId("")
+      setSalesChannel("walk_in")
+      setPaymentMethod("cash")
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : "We couldn't record this sale. Your cart is still here; please try again.")
     } finally {
@@ -215,8 +238,9 @@ export function SalesCheckoutPage() {
       {formError && <p aria-live="assertive" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive" role="alert">{formError}</p>}
       {statusMessage && <p aria-live="polite" className="rounded-lg border border-border bg-card p-3 text-sm" role="status">{statusMessage}</p>}
 
-      {customersEnabled && <section aria-labelledby="sale-customer-heading" className="rounded-lg border border-border bg-card p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold" id="sale-customer-heading">Customer</h2><p className="mt-1 text-sm text-muted-foreground">Walk-in is selected by default. Customer fields are basic contact details only.</p></div><Button onClick={() => { setQuickCreateOpen(true); setQuickError(""); setQuickStatus("") }} size="sm" variant="outline">Add customer</Button></div><div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:items-end"><label className="space-y-1.5 text-sm"><span>Search customers</span><input autoComplete="off" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone or email" type="search" value={customerSearch} /></label><label className="space-y-1.5 text-sm"><span>Sale customer</span><select className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setCustomerId(event.target.value)} value={customerId}><option value="">Walk-in</option>{matchingCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.phone ? ` · ${customer.phone}` : ""}</option>)}</select></label></div>{customerLookup.isError && <p className="mt-2 text-sm text-destructive" role="alert">Customer search is unavailable. You can still record this as Walk-in.</p>}{selectedCustomer && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 p-3 text-sm"><span><strong>{selectedCustomer.name}</strong>{selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}{selectedCustomer.email ? ` · ${selectedCustomer.email}` : ""}</span><Button onClick={() => setCustomerId("")} size="sm" variant="outline">Use Walk-in</Button></div>}</section>}
+      {customersEnabled && <section aria-labelledby="sale-customer-heading" className="rounded-lg border border-border bg-card p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold" id="sale-customer-heading">Customer</h2><p className="mt-1 text-sm text-muted-foreground">A customer is optional. Leave this as No customer for anonymous sales.</p></div><Button onClick={() => { setQuickCreateOpen(true); setQuickError(""); setQuickStatus("") }} size="sm" variant="outline">Add customer</Button></div><div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:items-end"><label className="space-y-1.5 text-sm"><span>Search customers</span><input autoComplete="off" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setCustomerSearch(event.target.value)} placeholder="Name, phone or email" type="search" value={customerSearch} /></label><label className="space-y-1.5 text-sm"><span>Sale customer</span><select className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setCustomerId(event.target.value)} value={customerId}><option value="">No customer</option>{matchingCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}{customer.phone ? ` · ${customer.phone}` : ""}</option>)}</select></label></div>{customerLookup.isError && <p className="mt-2 text-sm text-destructive" role="alert">Customer search is unavailable. You can still record this without a customer.</p>}{selectedCustomer && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 p-3 text-sm"><span><strong>{selectedCustomer.name}</strong>{selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}{selectedCustomer.email ? ` · ${selectedCustomer.email}` : ""}</span><Button onClick={() => setCustomerId("")} size="sm" variant="outline">No customer</Button></div>}</section>}
 
+      <section aria-labelledby="sale-details-heading" className="rounded-lg border border-border bg-card p-4 sm:p-5"><h2 className="font-semibold" id="sale-details-heading">Sale details</h2><div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="space-y-1.5 text-sm"><span>Sales channel</span><select aria-label="Sales channel" className="h-10 w-full rounded-md border border-border bg-background px-3 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setSalesChannel(event.target.value as SalesChannel)} value={salesChannel}><option value="walk_in">Walk-in</option><option value="pickup">Pickup</option><option value="delivery">Delivery</option><option value="other">Other</option></select></label><label className="space-y-1.5 text-sm"><span>Payment method</span><select aria-label="Payment method" className="h-10 w-full rounded-md border border-border bg-background px-3 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)} value={paymentMethod}><option value="cash">Cash</option><option value="mobile_money">Mobile Money</option><option value="card">Card</option><option value="bank_transfer">Bank Transfer</option></select></label></div></section>
       {products.isLoading && <LoadingState className="flex min-h-48 items-center justify-center rounded-lg border border-border bg-card" label="Loading products…" />}
       {products.isError && !products.isLoading && <ErrorState onRetry={retryProducts} title="Products unavailable">We couldn't load this business's products.</ErrorState>}
       {!products.isLoading && !products.isError && activeProducts.length === 0 && <EmptyState description="Add or reactivate products in Inventory before recording a sale." icon={PackagePlus} title="No active products available" />}
@@ -233,7 +257,7 @@ export function SalesCheckoutPage() {
                 <label className="block space-y-1.5"><span className="text-sm font-medium">Quantity{selectedProduct ? ` (${selectedProduct.baseUnit})` : ""}</span><input aria-describedby={errors.quantity ? "sale-quantity-error" : "sale-quantity-help"} aria-invalid={Boolean(errors.quantity)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setQuantity(event.target.value); setErrors((current) => ({ ...current, quantity: undefined })) }} value={quantity} /><span className="block text-xs text-muted-foreground" id="sale-quantity-help">Up to 3 decimal places.</span>{errors.quantity && <span className="block text-sm text-destructive" id="sale-quantity-error">{errors.quantity}</span>}</label>
                 <label className="block space-y-1.5"><span className="text-sm font-medium">Unit price</span><input aria-describedby={errors.price ? "sale-price-error" : "sale-price-help"} aria-invalid={Boolean(errors.price)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" inputMode="decimal" onChange={(event) => { setUnitPrice(event.target.value); setErrors((current) => ({ ...current, price: undefined })) }} value={unitPrice} /><span className="block text-xs text-muted-foreground" id="sale-price-help">Transaction price; does not change catalog price. Up to 4 decimals.</span>{errors.price && <span className="block text-sm text-destructive" id="sale-price-error">{errors.price}</span>}</label>
               </div>
-              <Button className="w-full sm:w-auto" disabled={recordSale.isPending} type="submit"><Plus aria-hidden="true" className="mr-2 size-4" />{cart.some((line) => line.productId === selectedProductId) ? "Update item in sale" : "Add to sale"}</Button>
+              <div className="flex flex-wrap gap-2"><Button className="w-full sm:w-auto" disabled={recordSale.isPending} type="submit"><Plus aria-hidden="true" className="mr-2 size-4" />{editingLine ? "Update item in sale" : "Add to sale"}</Button>{editingLine && <Button onClick={cancelEditing} type="button" variant="outline">Cancel editing</Button>}</div>
             </form>
           </section>
 
@@ -242,7 +266,7 @@ export function SalesCheckoutPage() {
             {cart.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-border p-6 text-center"><p className="font-medium">Your sale is empty</p><p className="mt-1 text-sm text-muted-foreground">Add a product to begin.</p></div> : <ul aria-label="Items in current sale" className="mt-4 divide-y divide-border">{cart.map((line) => {
               const liveProduct = activeProducts.find((product) => product.id === line.productId)
               const lineTotal = calculateSaleLineTotal(line.quantity, line.unitPrice)
-              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><p className="break-words font-medium">{line.name}</p><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} {liveProduct?.baseUnit ?? "units"} × {formatSaleMoney(line.unitPrice, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{lineTotal === null ? "—" : formatSaleMoney(lineTotal, business?.currency ?? "USD")}</span></p><p className="mt-1 text-xs text-muted-foreground">{liveProduct ? `${formatQuantity(liveProduct.currentQuantity)} ${liveProduct.baseUnit} available` : "Product no longer active"}</p></div><div className="flex shrink-0 gap-2"><Button aria-label={`Edit ${line.name}`} onClick={() => editLine(line)} size="sm" variant="outline">Edit</Button><Button aria-label={`Remove ${line.name}`} onClick={() => removeLine(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
+              return <li className="py-4 first:pt-0" key={line.productId}><div className="flex flex-col gap-3 sm:flex-row sm:items-start"><div className="min-w-0 flex-1"><button className="break-words text-left font-medium text-primary hover:underline" onClick={() => editLine(line)} type="button">{line.name}</button><p className="mt-0.5 text-xs text-muted-foreground">SKU {line.sku}</p><p className="mt-2 text-sm text-muted-foreground">{line.quantity} {liveProduct?.baseUnit ?? "units"} × {formatSaleMoney(line.unitPrice, business?.currency ?? "USD")} = <span className="font-medium text-foreground">{lineTotal === null ? "—" : formatSaleMoney(lineTotal, business?.currency ?? "USD")}</span></p><p className="mt-1 text-xs text-muted-foreground">{liveProduct ? `${formatQuantity(liveProduct.currentQuantity)} ${liveProduct.baseUnit} available` : "Product no longer active"}</p></div><div className="flex shrink-0 gap-2"><Button aria-label={`Remove ${line.name}`} onClick={() => removeLine(line.productId)} size="sm" variant="outline"><Trash2 aria-hidden="true" className="size-4" /><span className="sr-only">Remove</span></Button></div></div></li>
             })}</ul>}
             <label className="mt-4 block space-y-1.5"><span className="text-sm font-medium">Sale note <span className="font-normal text-muted-foreground">(optional)</span></span><textarea className="min-h-20 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" maxLength={2000} onChange={(event) => setNotes(event.target.value)} placeholder="Add a note for this sale" value={notes} /></label>
             <dl className="mt-5 border-t border-border pt-4"><div className="flex items-center justify-between"><dt className="text-sm text-muted-foreground">Subtotal</dt><dd className="text-lg font-semibold tabular-nums">{total === null ? "—" : formatSaleMoney(total, business?.currency ?? "USD")}</dd></div><div className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><dt>Total</dt><dd>{total === null ? "—" : formatSaleMoney(total, business?.currency ?? "USD")}</dd></div></dl>
