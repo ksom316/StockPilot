@@ -1,5 +1,5 @@
 import { Check, PackageCheck } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { Link } from "react-router-dom"
 
 import { useBusiness } from "@/features/business/business-context"
@@ -8,19 +8,15 @@ import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { BusinessIcon, businessIconOptions, type BusinessIconId } from "@/features/business/business-icons"
-import { BusinessLogo } from "@/components/branding/business-logo"
+import { BusinessBrandingCard } from "@/components/branding/business-branding-card"
 import { currencyOptions, type BusinessCurrency } from "@/features/business/currency"
 
 export function ModuleSettingsPage() {
-  const { business, businesses, enabledModules, hasFinancialActivity, isLoading, error, role, setBusinessLogo, removeBusinessLogo, setModuleEnabled, setBusinessIcon, setBusinessCurrency, switchBusiness } = useBusiness()
+  const { business, businesses, enabledModules, hasFinancialActivity, isLoading, error, role, setModuleEnabled, setBusinessIcon, setBusinessCurrency, switchBusiness } = useBusiness()
   const [pendingModule, setPendingModule] = useState<string | null>(null)
   const [updateError, setUpdateError] = useState("")
   const [isCurrencySaving, setIsCurrencySaving] = useState(false)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const logoInputRef = useRef<HTMLInputElement>(null)
   const canManage = role === "owner"
-
-  useEffect(() => () => { if (logoPreview) URL.revokeObjectURL(logoPreview) }, [logoPreview])
 
   const toggleModule = async (module: (typeof optionalModules)[number]["key"], enabled: boolean) => {
     if (!canManage || pendingModule) return
@@ -54,12 +50,6 @@ export function ModuleSettingsPage() {
     try { await setBusinessCurrency(currency) } catch (cause) { setUpdateError(cause instanceof Error ? cause.message : "We couldn't update the business currency. Please try again.") } finally { setIsCurrencySaving(false) }
   }
 
-  const chooseBusinessLogo = async (file: File) => {
-    const nextPreview = URL.createObjectURL(file)
-    setLogoPreview(nextPreview); setUpdateError("")
-    try { await setBusinessLogo(file) } catch (cause) { setUpdateError(cause instanceof Error ? cause.message : "We couldn't update the business logo. Please try again.") } finally { URL.revokeObjectURL(nextPreview); setLogoPreview(null); if (logoInputRef.current) logoInputRef.current.value = "" }
-  }
-
   if (isLoading) return <p className="flex min-h-56 items-center justify-center text-sm text-muted-foreground" role="status">Loading module settings…</p>
   if (error) return <div className="rounded-xl border border-destructive/25 bg-card p-6 text-center" role="alert"><h1 className="text-xl font-semibold">Module settings unavailable</h1><p className="mt-2 text-muted-foreground">{error}</p></div>
   if (!business) return <div className="rounded-xl border border-border bg-card p-6 text-center"><h1 className="text-xl font-semibold">Workspace unavailable</h1><p className="mt-2 text-muted-foreground">Sign in to a business workspace to view its modules.</p></div>
@@ -74,13 +64,9 @@ export function ModuleSettingsPage() {
         {role === "owner" && <Button asChild className="mt-4" size="sm" variant="outline"><Link to="/businesses/new">Create business</Link></Button>}
       </section>
 
-      <section aria-labelledby="business-identity-title" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div><h2 className="text-lg font-semibold" id="business-identity-title">Business identity</h2><p className="mt-1 text-sm text-muted-foreground">Customize this workspace with a logo or built-in fallback icon. StockPilot branding stays separate.</p></div>
-        <div className="mt-4 flex flex-col gap-4 rounded-lg border border-border p-4 sm:flex-row sm:items-center">
-          <BusinessLogo className="size-16 rounded-lg" iconId={business.iconId} name={business.name} path={business.logoPath} src={logoPreview} />
-          <div className="min-w-0 flex-1"><p className="font-medium">Business logo</p><p className="mt-1 text-sm text-muted-foreground">JPEG, PNG, or WebP up to 5 MB. This logo appears only in this workspace.</p><div className="mt-3 flex flex-wrap gap-2"><button className="min-h-10 rounded-md border border-border px-3 text-sm font-medium hover:bg-muted disabled:opacity-50" disabled={!canManage || Boolean(pendingModule)} onClick={() => logoInputRef.current?.click()} type="button">{business.logoPath ? "Change logo" : "Upload logo"}</button>{business.logoPath && <button className="min-h-10 rounded-md px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50" disabled={!canManage || Boolean(pendingModule)} onClick={() => { setUpdateError(""); void removeBusinessLogo().catch((cause) => setUpdateError(cause instanceof Error ? cause.message : "We couldn't remove the business logo. Please try again.")) }} type="button">Remove</button>}<input accept="image/jpeg,image/png,image/webp" className="sr-only" ref={logoInputRef} onChange={(event) => { const file = event.target.files?.[0]; if (file) void chooseBusinessLogo(file) }} type="file" /></div></div>
-        </div>
-        {!canManage && <p className="mt-3 text-sm text-muted-foreground">Only the business owner can change or remove the business logo.</p>}
+      <section aria-labelledby="business-profile-section-title" className="space-y-4">
+        <h2 className="sr-only" id="business-profile-section-title">Business profile</h2>
+        <BusinessBrandingCard />
         <div aria-label="Business icon choices" className="mt-4 flex flex-wrap gap-2" role="group">
           {businessIconOptions.map((option) => (
             <button aria-label={option.label} aria-pressed={business.iconId === option.id} className={`flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium ${business.iconId === option.id ? "border-primary/40 bg-primary/5 text-primary" : "border-border hover:bg-muted"}`} disabled={!canManage || Boolean(pendingModule)} key={option.id} onClick={() => void chooseBusinessIcon(option.id)} type="button">

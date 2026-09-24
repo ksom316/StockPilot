@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -9,7 +10,7 @@ vi.mock("@/features/finance/finance-queries", () => ({ useFinancialSummary: dash
 import { DashboardPage } from "@/pages/dashboard-page"
 import { createAuthValue, createBusinessValue, testBusiness, testMembership, testUser, TestAuthProvider, TestBusinessProvider } from "@/test/auth-test-utils"
 import type { BusinessOverview } from "@/features/analytics/analytics-types"
-import type { Membership } from "@/features/business/business-context"
+import type { Business, Membership } from "@/features/business/business-context"
 import type { OptionalModule } from "@/features/business/modules"
 
 const overview: BusinessOverview = {
@@ -41,12 +42,14 @@ interface DashboardOptions {
   overviewError?: boolean
   financeLoading?: boolean
   financeError?: boolean
+  business?: Business
+  setBusinessLogo?: (file: File) => Promise<void>
 }
 
-function renderDashboard({ role = "owner", enabledModules = ["sales", "purchasing", "expenses"], data = overview, financeData = financeSummary, overviewLoading = false, overviewError = false, financeLoading = false, financeError = false }: DashboardOptions = {}) {
+function renderDashboard({ role = "owner", enabledModules = ["sales", "purchasing", "expenses"], data = overview, financeData = financeSummary, overviewLoading = false, overviewError = false, financeLoading = false, financeError = false, business = testBusiness, setBusinessLogo = vi.fn().mockResolvedValue(undefined) }: DashboardOptions = {}) {
   dashboardMocks.useOverview.mockReturnValue({ data, isLoading: overviewLoading, isError: overviewError, refetch: vi.fn() })
   dashboardMocks.useFinance.mockReturnValue({ data: financeData, isLoading: financeLoading, isError: financeError, refetch: vi.fn() })
-  return render(<MemoryRouter><TestAuthProvider value={createAuthValue({ user: testUser })}><TestBusinessProvider value={createBusinessValue({ business: testBusiness, membership: testMembership, role, enabledModules, onboardingRequired: false })}><DashboardPage /></TestBusinessProvider></TestAuthProvider></MemoryRouter>)
+  return render(<MemoryRouter><TestAuthProvider value={createAuthValue({ user: testUser })}><TestBusinessProvider value={createBusinessValue({ business, membership: { ...testMembership, businessId: business.id }, role, enabledModules, onboardingRequired: false, setBusinessLogo })}><DashboardPage /></TestBusinessProvider></TestAuthProvider></MemoryRouter>)
 }
 
 describe("module-aware dashboard overview", () => {
@@ -57,6 +60,28 @@ describe("module-aware dashboard overview", () => {
     const workspace = screen.getByRole("region", { name: /businesses & workspaces/i })
     expect(within(workspace).getByRole("link", { name: "Add another business" })).toHaveAttribute("href", "/businesses/new")
     expect(within(workspace).getByRole("link", { name: "Manage workspaces" })).toHaveAttribute("href", "/settings/modules")
+  })
+
+  it("makes adding a business logo visible to owners on the active dashboard", async () => {
+    const user = userEvent.setup()
+    const setBusinessLogo = vi.fn().mockResolvedValue(undefined)
+    renderDashboard({ setBusinessLogo })
+    expect(screen.getByRole("button", { name: "Add business logo" })).toBeInTheDocument()
+    const input = screen.getByLabelText(/business logo upload/i)
+    await user.upload(input, new File(["image"], "logo.png", { type: "image/png" }))
+    expect(setBusinessLogo).toHaveBeenCalledWith(expect.any(File))
+  })
+
+  it("shows change but not add when the active business already has a logo", () => {
+    renderDashboard({ business: { ...testBusiness, logoPath: "businesses/business-1/logo.png" } })
+    expect(screen.getByRole("button", { name: "Change logo" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Add business logo" })).not.toBeInTheDocument()
+  })
+
+  it.each(["manager", "employee", "cashier"] as const)("does not show business-logo editing controls to %s", (role) => {
+    renderDashboard({ role })
+    expect(screen.queryByRole("button", { name: /business logo|change logo/i })).not.toBeInTheDocument()
+    expect(screen.getByText("Business branding is managed by the owner.")).toBeInTheDocument()
   })
 
   it("does not expose business creation to non-owner roles", () => {

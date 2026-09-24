@@ -8,6 +8,7 @@ import { getFinanceDateRange, type FinancePeriod } from "@/features/finance/fina
 import { formatExpenseMoney } from "@/features/finance/finance-money"
 import { useFinancialSummary } from "@/features/finance/finance-queries"
 import { Button } from "@/components/ui/button"
+import { BusinessBrandingCard } from "@/components/branding/business-branding-card"
 import { PageHeader, SectionHeader } from "@/components/layout/page-header"
 import { ErrorState, LoadingState } from "@/components/ui/state"
 import { InventoryStatus, RecordedSalesTrend } from "@/pages/dashboard-visualizations"
@@ -39,6 +40,8 @@ export function DashboardPage() {
       eyebrow="Dashboard"
       title={`Welcome to ${business.name}`}
     />
+
+    <BusinessBrandingCard compact />
 
     <section aria-label="Dashboard date range" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm">
       <label className="flex items-center gap-2"><span className="font-medium text-muted-foreground">Period</span><select className={inputClass} onChange={(event) => setPeriod(event.target.value as FinancePeriod)} value={period}><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="custom">Custom</option></select></label>
