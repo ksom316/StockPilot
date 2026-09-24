@@ -32,6 +32,15 @@ interface Errors {
 
 const moneyPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,4})?$/
 const quantityPattern = /^(?:0|[1-9]\d{0,14})(?:\.\d{1,3})?$/
+const standardUnits = ["unit", "kg", "piece", "pack", "carton", "crate", "bottle", "sack", "box"]
+
+function isStandardUnit(value: string) {
+  return standardUnits.includes(value.trim())
+}
+
+function normalizeUnit(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase()
+}
 
 function formatPreviewAmount(value: bigint) {
   const sign = value < 0n ? "-" : ""
@@ -71,6 +80,10 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
   const [isSavingCategory, setIsSavingCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState("")
   const [categoryError, setCategoryError] = useState("")
+  const baseUnitIsCustom = !isStandardUnit(baseUnit)
+  const purchaseUnitIsCustom = !isStandardUnit(purchaseUnit)
+  const unitOptions = () => <><option value="">Choose a unit</option>{standardUnits.map((unit) => <option key={unit} value={unit}>{unit}</option>)}<option value="other">Other</option></>
+  const selectUnit = (value: string, setter: (next: string) => void) => setter(value === "other" || value === "" ? "" : value)
   const normalizedConversionForPreview = purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim()
   const baseCostPreview = calculateBaseUnitCost(purchaseCost.trim(), normalizedConversionForPreview)
 
@@ -111,7 +124,9 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
 
     setIsSubmitting(true)
     try {
-      const normalizedConversion = purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim()
+      const nextBaseUnit = isStandardUnit(baseUnit) ? baseUnit.trim().toLocaleLowerCase() : normalizeUnit(baseUnit)
+      const nextPurchaseUnit = isStandardUnit(purchaseUnit) ? purchaseUnit.trim().toLocaleLowerCase() : normalizeUnit(purchaseUnit)
+      const normalizedConversion = nextPurchaseUnit === nextBaseUnit ? "1" : purchaseConversionQuantity.trim()
       const derivedCost = calculateBaseUnitCost(purchaseCost.trim(), normalizedConversion)
       await onSubmit({
         name: name.trim(),
@@ -120,9 +135,9 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
         description: description.trim() || null,
         costPrice: derivedCost ?? purchaseCost.trim(),
         sellingPrice: sellingPrice.trim(),
-        baseUnit: baseUnit.trim(),
-        purchaseUnit: purchaseUnit.trim(),
-        purchaseConversionQuantity: purchaseUnit.trim().toLocaleLowerCase() === baseUnit.trim().toLocaleLowerCase() ? "1" : purchaseConversionQuantity.trim(),
+        baseUnit: nextBaseUnit,
+        purchaseUnit: nextPurchaseUnit,
+        purchaseConversionQuantity: normalizedConversion,
         lowStockThreshold: lowStockThreshold.trim(),
         isActive,
         sellingUnits: sellingUnits.map((sellingUnit) => ({ unit: sellingUnit.unit.trim(), conversionQuantity: sellingUnit.conversionQuantity.trim(), sellingPrice: sellingUnit.sellingPrice.trim() })),
@@ -172,8 +187,8 @@ export function ProductFormDialog({ product, categories: initialCategories, curr
           <FormField disabled={isSubmitting} error={errors.sellingPrice} id="selling-price" inputMode="decimal" label={`Selling price per unit (${currency})`} onChange={(event) => setSellingPrice(event.target.value)} value={sellingPrice} />
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          <FormField disabled={isSubmitting} error={errors.baseUnit} id="base-unit" label="Selling unit" maxLength={40} onChange={(event) => setBaseUnit(event.target.value)} placeholder="kg, piece, pack, carton" value={baseUnit} />
-          <FormField disabled={isSubmitting} error={errors.purchaseUnit} id="purchase-unit" label="Purchase unit" maxLength={40} onChange={(event) => setPurchaseUnit(event.target.value)} placeholder="carton" value={purchaseUnit} />
+          <div className="space-y-2"><label className="block text-sm font-medium" htmlFor="base-unit">Selling unit</label><select className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" disabled={isSubmitting} id="base-unit" onChange={(event) => selectUnit(event.target.value, setBaseUnit)} value={baseUnitIsCustom ? "other" : baseUnit.trim().toLocaleLowerCase()}>{unitOptions()}</select>{baseUnitIsCustom && <FormField disabled={isSubmitting} error={errors.baseUnit} id="custom-base-unit" label="Custom selling unit" maxLength={40} onChange={(event) => setBaseUnit(event.target.value)} placeholder="e.g. tray" value={baseUnit} />}{errors.baseUnit && !baseUnitIsCustom && <p className="text-sm text-destructive">{errors.baseUnit}</p>}</div>
+          <div className="space-y-2"><label className="block text-sm font-medium" htmlFor="purchase-unit">Purchase unit</label><select className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" disabled={isSubmitting} id="purchase-unit" onChange={(event) => selectUnit(event.target.value, setPurchaseUnit)} value={purchaseUnitIsCustom ? "other" : purchaseUnit.trim().toLocaleLowerCase()}>{unitOptions()}</select>{purchaseUnitIsCustom && <FormField disabled={isSubmitting} error={errors.purchaseUnit} id="custom-purchase-unit" label="Custom purchase unit" maxLength={40} onChange={(event) => setPurchaseUnit(event.target.value)} placeholder="e.g. bundle" value={purchaseUnit} />}{errors.purchaseUnit && !purchaseUnitIsCustom && <p className="text-sm text-destructive">{errors.purchaseUnit}</p>}</div>
         </div>
         {purchaseUnit.trim().toLocaleLowerCase() !== baseUnit.trim().toLocaleLowerCase() && <><FormField disabled={isSubmitting} error={errors.purchaseConversionQuantity} id="purchase-conversion-quantity" inputMode="decimal" label={`How many ${baseUnit.trim() || "selling units"} are in one ${purchaseUnit.trim() || "purchase unit"}?`} onChange={(event) => setPurchaseConversionQuantity(event.target.value)} value={purchaseConversionQuantity} />{baseUnit.trim() && purchaseUnit.trim() && <p className="-mt-3 text-sm text-muted-foreground">1 {purchaseUnit.trim()} contains {purchaseConversionQuantity || "?"} {baseUnit.trim()}</p>}</>}
         {baseCostPreview && <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm"><p>Your cost: <strong>{formatPurchaseMoney(baseCostPreview, currency)} per {baseUnit.trim() || "selling unit"}</strong></p><PricePreview cost={baseCostPreview} currency={currency} price={sellingPrice} unit={baseUnit.trim() || "selling unit"} /></div>}
